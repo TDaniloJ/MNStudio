@@ -148,15 +148,15 @@ const FAQ = () => {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary-600 to-primary-800 text-white py-16">
+      <div className="bg-gradient-to-r from-primary-600 to-primary-800 text-white py-16 dark:from-primary-800 dark:to-primary-900">
         <div className="container-custom text-center">
           <HelpCircle className="w-16 h-16 mx-auto mb-4" />
           <h1 className="text-4xl font-bold mb-4">
             Central de Ajuda
           </h1>
-          <p className="text-xl text-primary-100 mb-8">
+          <p className="text-xl text-primary-100 mb-8 dark:text-primary-200">
             Encontre respostas para suas dúvidas
           </p>
           
@@ -181,8 +181,8 @@ const FAQ = () => {
                 onClick={() => setActiveCategory(cat.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap transition ${
                   activeCategory === cat.id
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-100'
+                    ? 'bg-primary-600 text-white dark:bg-primary-700 dark:text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -196,11 +196,11 @@ const FAQ = () => {
         <div className="max-w-4xl mx-auto space-y-4">
           {filteredFAQ.length === 0 ? (
             <Card className="p-12 text-center">
-              <Search className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              <Search className="w-16 h-16 text-gray-400 mx-auto mb-4 dark:text-gray-600" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2 dark:text-white">
                 Nenhum resultado encontrado
               </h3>
-              <p className="text-gray-600">
+              <p className="text-gray-600 dark:text-gray-300">
                 Tente usar outros termos de busca ou navegue pelas categorias
               </p>
             </Card>
@@ -213,19 +213,19 @@ const FAQ = () => {
               >
                 <div className="p-6">
                   <div className="flex items-start justify-between gap-4">
-                    <h3 className="text-lg font-semibold text-gray-900 flex-1">
+                    <h3 className="text-lg font-semibold text-gray-900 flex-1 dark:text-white">
                       {item.question}
                     </h3>
                     {openItems.includes(index) ? (
-                      <ChevronUp className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                      <ChevronUp className="w-5 h-5 text-gray-400 flex-shrink-0 dark:text-gray-600" />
                     ) : (
-                      <ChevronDown className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                      <ChevronDown className="w-5 h-5 text-gray-400 flex-shrink-0 dark:text-gray-600" />
                     )}
                   </div>
                   
                   {openItems.includes(index) && (
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <p className="text-gray-700 leading-relaxed whitespace-pre-line">
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <p className="text-gray-700 leading-relaxed whitespace-pre-line dark:text-gray-300">
                         {item.answer}
                       </p>
                     </div>
@@ -237,12 +237,12 @@ const FAQ = () => {
         </div>
 
         {/* Contact CTA */}
-        <Card className="mt-12 p-8 bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+        <Card className="mt-12 p-8 bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 dark:from-blue-900 dark:to-purple-900 dark:border-blue-800">
           <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2 dark:text-white">
               Não encontrou o que procurava?
             </h2>
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-600 mb-6 dark:text-gray-300">
               Nossa equipe de suporte está pronta para ajudar!
             </p>
             <a href="/contact">

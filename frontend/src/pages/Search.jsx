@@ -128,7 +128,7 @@ const Search = () => {
   };
 
   const totalResults = results.mangas.length + results.novels.length;
-  const hasFilters = selectedGenre || status || mangaType || contentType !== 'all';
+  const hasFilters = selectedGenre || status || (contentType === 'manga' && mangaType) || contentType !== 'all';
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">

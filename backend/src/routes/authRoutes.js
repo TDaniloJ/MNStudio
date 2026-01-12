@@ -29,9 +29,15 @@ router.post('/google', authController.googleLogin);
 router.get('/me', auth, trackSession, authController.getMe);
 router.put('/profile', auth, trackSession, upload.single('avatar'), authController.updateProfile);
 router.put('/change-password', auth, trackSession, authController.changePassword);
+router.put('/banner', auth, trackSession, upload.single('banner'), authController.updateBanner);
+router.delete('/banner', auth, trackSession, authController.deleteBanner);
 
 // 🔐 Novas Rotas - Verificação de Email
 router.post('/verify-email/send', auth, trackSession, authController.sendVerificationEmail);
+router.post('/verify-email', authController.verifyEmail);
+
+// 🌐 Novas Rotas - Provedores Sociais
+router.delete('/google', auth, trackSession, authController.unlinkGoogle);
 
 // 💻 Novas Rotas - Sessões
 router.get('/sessions', auth, trackSession, authController.getActiveSessions);

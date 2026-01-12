@@ -17,5 +17,10 @@ export const favoriteService = {
   async getUserFavorites(type) {
     const response = await api.get('/favorites', { params: { type } });
     return response.data;
+  },
+
+  async checkFavorite(contentType, contentId) {
+    const response = await api.get(`/favorites/${contentType}/${contentId}`);
+    return response.data;
   }
 };

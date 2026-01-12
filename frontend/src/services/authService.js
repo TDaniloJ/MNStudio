@@ -32,6 +32,18 @@ export const authService = {
     return response.data;
   },
 
+  async updateBanner(data) {
+    const response = await api.put('/auth/banner', data, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+
+  async deleteBanner() {
+    const response = await api.delete('/auth/banner');
+    return response.data;
+  },
+
   async changePassword(data) {
     const response = await api.put('/auth/change-password', data);
     return response.data;
@@ -100,6 +112,16 @@ export const authService = {
 
   async resetPassword(token, newPassword) {
     const response = await api.post('/auth/reset-password', { token, newPassword });
+    return response.data;
+  },
+
+  async unlinkGoogle() {
+    const response = await api.delete('/auth/google');
+    return response.data;
+  },
+
+  async verifyEmail(token) {
+    const response = await api.post('/auth/verify-email', { token });
     return response.data;
   },
 

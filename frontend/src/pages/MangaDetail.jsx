@@ -13,7 +13,10 @@ import {
   CheckCircle,
   XCircle,
   PauseCircle,
-  Play
+  Play,
+  CalendarDays,
+  Palette,
+  Image as ImageIcon
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useMangaStore } from '../store/mangaStore';
@@ -32,12 +35,29 @@ const MangaDetail = () => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
-  const [sortOrder, setSortOrder] = useState('asc'); // asc or desc
+  const [sortOrder, setSortOrder] = useState('asc');
 
   useEffect(() => {
     loadManga();
     return () => clearCurrentManga();
   }, [id]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const checkFavoriteStatus = async () => {
+      if (isAuthenticated && currentManga) {
+        try {
+          const data = await favoriteService.getUserFavorites('manga');
+          const isFav = data.favorites?.mangas?.some(m => m.id === currentManga.id);
+          setIsFavorite(isFav || false);
+        } catch (error) {
+          console.error('Erro ao verificar favorito:', error);
+        }
+      }
+    };
+    checkFavoriteStatus();
+  }, [isAuthenticated, currentManga]);
 
   const loadManga = async () => {
     try {
@@ -100,41 +120,38 @@ const MangaDetail = () => {
 
   const getStatusIcon = () => {
     switch (currentManga.status) {
-      case 'ongoing':
-        return <Play className="w-4 h-4" />;
-      case 'completed':
-        return <CheckCircle className="w-4 h-4" />;
-      case 'hiatus':
-        return <PauseCircle className="w-4 h-4" />;
-      default:
-        return <XCircle className="w-4 h-4" />;
+      case 'ongoing': return <Play className="w-4 h-4" />;
+      case 'completed': return <CheckCircle className="w-4 h-4" />;
+      case 'hiatus': return <PauseCircle className="w-4 h-4" />;
+      default: return <XCircle className="w-4 h-4" />;
     }
   };
 
   const getStatusColor = () => {
     switch (currentManga.status) {
-      case 'ongoing':
-        return 'bg-green-100 text-green-700 border-green-200';
-      case 'completed':
-        return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'hiatus':
-        return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-      default:
-        return 'bg-gray-100 text-gray-700 border-gray-200';
+      case 'ongoing': return 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700';
+      case 'completed': return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-700';
+      case 'hiatus': return 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700';
+      default: return 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700';
     }
   };
 
   const getStatusText = () => {
     switch (currentManga.status) {
-      case 'ongoing':
-        return 'Em Andamento';
-      case 'completed':
-        return 'Completo';
-      case 'hiatus':
-        return 'Em Hiato';
-      default:
-        return 'Desconhecido';
+      case 'ongoing': return 'Em Andamento';
+      case 'completed': return 'Completo';
+      case 'hiatus': return 'Em Hiato';
+      default: return 'Desconhecido';
     }
+  };
+
+  // ✅ Função para obter imagem do capítulo
+  const getChapterImage = (chapter) => {
+    if (chapter.pages && chapter.pages.length > 0) {
+      const firstPage = chapter.pages.find(p => p.page_number === 1) || chapter.pages[0];
+      return getImageUrl(firstPage.image_url);
+    }
+    return null;
   };
 
   return (
@@ -159,7 +176,7 @@ const MangaDetail = () => {
             variant="secondary"
             size="sm"
             onClick={() => navigate(-1)}
-            className="mb-4 bg-white/10 hover:bg-white/20 text-white border-0 dark:text-gray-200"
+            className="mb-4 bg-white/10 hover:bg-white/20 text-white border-0"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar
@@ -168,12 +185,12 @@ const MangaDetail = () => {
           <div className="flex flex-col md:flex-row gap-8">
             {/* Cover Image */}
             <div className="flex-shrink-0">
-              <div className="w-full md:w-64 aspect-[2/3] rounded-xl overflow-hidden shadow-2xl border-4 border-white/10">
+              <div className="w-full md:w-64 aspect-[2/3] rounded-xl overflow-hidden shadow-2xl border-4 border-white/10 group">
                 {!imageError && imageUrl ? (
                   <img
                     src={imageUrl}
                     alt={currentManga.title}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     onError={() => setImageError(true)}
                   />
                 ) : (
@@ -200,28 +217,31 @@ const MangaDetail = () => {
 
               {/* Meta Info */}
               <div className="flex flex-wrap gap-3 mb-6">
-                {/* Status Badge */}
                 <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border-2 font-semibold ${getStatusColor()}`}>
                   {getStatusIcon()}
                   {getStatusText()}
                 </span>
 
-                {/* Type Badge */}
                 <span className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-full font-semibold uppercase text-sm">
                   {currentManga.type}
                 </span>
 
-                {/* Views */}
-                <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full">
+                <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full backdrop-blur-sm">
                   <Eye className="w-4 h-4" />
-                  {formatNumber(currentManga.views)} views
+                  {formatNumber(currentManga.views)}
                 </span>
 
-                {/* Chapters */}
-                <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full">
+                <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full backdrop-blur-sm">
                   <BookOpen className="w-4 h-4" />
-                  {sortedChapters.length} capítulos
+                  {sortedChapters.length} caps
                 </span>
+
+                {currentManga.rating > 0 && (
+                  <span className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-500/20 rounded-full backdrop-blur-sm border border-yellow-500/30">
+                    <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                    {currentManga.rating.toFixed(1)}
+                  </span>
+                )}
               </div>
 
               {/* Genres */}
@@ -230,7 +250,7 @@ const MangaDetail = () => {
                   <Link
                     key={genre.id}
                     to={`/mangas?genre=${genre.id}`}
-                    className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition"
+                    className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition backdrop-blur-sm"
                   >
                     {genre.name}
                   </Link>
@@ -238,19 +258,26 @@ const MangaDetail = () => {
               </div>
 
               {/* Author & Artist */}
-              <div className="flex flex-wrap gap-4 mb-6 text-sm">
-                <div className="flex items-center gap-2">
-                  <User className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-400">Autor:</span>
-                  <span className="font-medium">{currentManga.author}</span>
-                </div>
-                {currentManga.artist && (
+              <div className="flex flex-wrap gap-6 mb-6 text-sm">
+                {currentManga.author && (
                   <div className="flex items-center gap-2">
                     <User className="w-4 h-4 text-gray-400" />
+                    <span className="text-gray-400">Autor:</span>
+                    <span className="font-medium">{currentManga.author}</span>
+                  </div>
+                )}
+                {currentManga.artist && currentManga.artist !== currentManga.author && (
+                  <div className="flex items-center gap-2">
+                    <Palette className="w-4 h-4 text-gray-400" />
                     <span className="text-gray-400">Artista:</span>
                     <span className="font-medium">{currentManga.artist}</span>
                   </div>
                 )}
+                <div className="flex items-center gap-2">
+                  <CalendarDays className="w-4 h-4 text-gray-400" />
+                  <span className="text-gray-400">Adicionado:</span>
+                  <span className="font-medium">{formatDate(currentManga.created_at)}</span>
+                </div>
               </div>
 
               {/* Action Buttons */}
@@ -268,7 +295,7 @@ const MangaDetail = () => {
                   size="lg"
                   onClick={handleFavorite}
                   loading={favoriteLoading}
-                  className={isFavorite ? '' : 'bg-white/10 hover:bg-white/20 border-0'}
+                  className={isFavorite ? '' : 'bg-white/10 hover:bg-white/20 border-0 backdrop-blur-sm'}
                 >
                   <Heart className={`w-5 h-5 mr-2 ${isFavorite ? 'fill-current' : ''}`} />
                   {isFavorite ? 'Favoritado' : 'Favoritar'}
@@ -277,7 +304,7 @@ const MangaDetail = () => {
                   variant="secondary"
                   size="lg"
                   onClick={handleShare}
-                  className="bg-white/10 hover:bg-white/20 border-0"
+                  className="bg-white/10 hover:bg-white/20 border-0 backdrop-blur-sm"
                 >
                   <Share2 className="w-5 h-5" />
                 </Button>
@@ -331,36 +358,62 @@ const MangaDetail = () => {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {sortedChapters.map((chapter, index) => (
-                    <Link
-                      key={chapter.id}
-                      to={`/manga/${currentManga.id}/chapter/${chapter.id}`}
-                      className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-all group border border-transparent hover:border-primary-200 dark:hover:bg-gray-800 dark:hover:border-gray-600"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-lg bg-primary-100 flex items-center justify-center text-primary-600 font-bold group-hover:bg-primary-600 group-hover:text-white transition-colors dark:bg-primary-900/50 dark:group-hover:bg-primary-600">
-                          {chapter.chapter_number}
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors dark:text-gray-200">
-                            Capítulo {chapter.chapter_number}
-                            {chapter.title && ` - ${chapter.title}`}
-                          </h3>
-                          <div className="flex items-center gap-3 text-sm text-gray-500 mt-1 dark:text-gray-400">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="w-3 h-3" />
-                              {formatDate(chapter.created_at)}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Eye className="w-3 h-3" />
-                              {formatNumber(chapter.views)}
-                            </span>
+                  {sortedChapters.map((chapter, index) => {
+                    const chapterImage = getChapterImage(chapter);
+                    
+                    return (
+                      <Link
+                        key={chapter.id}
+                        to={`/manga/${currentManga.id}/chapter/${chapter.id}`}
+                        className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-all group border border-transparent hover:border-primary-200 hover:shadow-md dark:hover:bg-gray-800 dark:hover:border-primary-700"
+                      >
+                        <div className="flex items-center gap-4">
+                          {/* ✅ Thumbnail do capítulo */}
+                          <div className="w-12 h-16 rounded-lg overflow-hidden bg-primary-100 flex items-center justify-center flex-shrink-0 group-hover:ring-2 group-hover:ring-primary-500 transition-all dark:bg-primary-900/50">
+                            {chapterImage ? (
+                              <img
+                                src={chapterImage}
+                                alt={`Capítulo ${chapter.chapter_number}`}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.parentElement.innerHTML = `<span class="text-primary-600 font-bold dark:text-primary-400">${parseFloat(chapter.chapter_number).toFixed(0)}</span>`;
+                                }}
+                              />
+                            ) : (
+                              <div className="flex flex-col items-center justify-center text-primary-600 dark:text-primary-400">
+                                <ImageIcon className="w-5 h-5 mb-1 opacity-50" />
+                                <span className="text-xs font-semibold">{parseFloat(chapter.chapter_number).toFixed(0)}</span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div>
+                            <h3 className="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors dark:text-gray-200 dark:group-hover:text-primary-400">
+                              Capítulo {chapter.chapter_number}
+                              {chapter.title && ` - ${chapter.title}`}
+                            </h3>
+                            <div className="flex items-center gap-3 text-sm text-gray-500 mt-1 dark:text-gray-400">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                {formatDate(chapter.created_at)}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Eye className="w-3 h-3" />
+                                {formatNumber(chapter.views)}
+                              </span>
+                              {chapter.pages && chapter.pages.length > 0 && (
+                                <span className="flex items-center gap-1 text-primary-600 dark:text-primary-400">
+                                  <ImageIcon className="w-3 h-3" />
+                                  {chapter.pages.length} págs
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <Play className="w-5 h-5 text-gray-400 group-hover:text-primary-600 transition-colors dark:group-hover:text-primary-600" />
-                    </Link>
-                  ))}
+                        <Play className="w-5 h-5 text-gray-400 group-hover:text-primary-600 transition-colors dark:group-hover:text-primary-400" />
+                      </Link>
+                    );
+                  })}
                 </div>
               )}
             </Card>
@@ -396,7 +449,12 @@ const MangaDetail = () => {
                     <span>Avaliação</span>
                   </div>
                   <span className="font-semibold text-gray-900 dark:text-gray-200">
-                    {currentManga.rating > 0 ? currentManga.rating.toFixed(1) : 'N/A'}
+                    {currentManga.rating > 0 ? (
+                      <span className="flex items-center gap-1">
+                        <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                        {currentManga.rating.toFixed(1)}
+                      </span>
+                    ) : 'N/A'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -405,9 +463,9 @@ const MangaDetail = () => {
                     <span>Status</span>
                   </div>
                   <span className={`font-semibold ${
-                    currentManga.status === 'ongoing' ? 'text-green-600' :
-                    currentManga.status === 'completed' ? 'text-blue-600' :
-                    'text-yellow-600'
+                    currentManga.status === 'ongoing' ? 'text-green-600 dark:text-green-400' :
+                    currentManga.status === 'completed' ? 'text-blue-600 dark:text-blue-400' :
+                    'text-yellow-600 dark:text-yellow-400'
                   }`}>
                     {getStatusText()}
                   </span>
@@ -420,24 +478,26 @@ const MangaDetail = () => {
               <Card className="p-6">
                 <h3 className="font-bold text-gray-900 mb-4 text-lg dark:text-white">Enviado por</h3>
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center text-white font-bold text-lg dark:bg-primary-400">
+                  <div className="w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
                     {currentManga.uploader.username?.charAt(0).toUpperCase()}
                   </div>
                   <div>
                     <p className="font-semibold text-gray-900 dark:text-gray-200">
                       {currentManga.uploader.username}
                     </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">ID: {currentManga.uploader.id}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Uploader</p>
                   </div>
                 </div>
               </Card>
             )}
 
-            {/* Additional Info */}
-            <Card className="p-6 bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/50 dark:to-primary-800/50">
-              <h3 className="font-bold text-gray-900 mb-3 dark:text-white">💡 Dica</h3>
+            {/* Tip Card */}
+            <Card className="p-6 bg-gradient-to-br from-primary-50 to-primary-100 border-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 dark:border-primary-700">
+              <h3 className="font-bold text-gray-900 mb-3 dark:text-white flex items-center gap-2">
+                <span>💡</span> Dica de Leitura
+              </h3>
               <p className="text-sm text-gray-700 dark:text-gray-300">
-                Use as setas do teclado ← → para navegar entre as páginas durante a leitura!
+                Use as setas do teclado <kbd className="px-2 py-1 bg-white rounded shadow-sm dark:bg-gray-700">←</kbd> <kbd className="px-2 py-1 bg-white rounded shadow-sm dark:bg-gray-700">→</kbd> para navegar entre as páginas durante a leitura!
               </p>
             </Card>
           </div>

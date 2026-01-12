@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { 
+import {
   LayoutDashboard,
   BookOpen,
   FileText,
@@ -11,8 +11,7 @@ import {
   LogOut,
   Home,
   ChevronRight,
-  Moon,
-  Sun
+  Mail
 } from 'lucide-react';
 import { Settings as SettingsIcon } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
@@ -22,6 +21,7 @@ const AdminLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
@@ -31,6 +31,7 @@ const AdminLayout = () => {
     { path: '/admin/novels', icon: FileText, label: 'Novels' },
     { path: '/admin/genres', icon: Tag, label: 'Gêneros' },
     { path: '/admin/users', icon: Users, label: 'Usuários', adminOnly: true },
+    { path: '/admin/notifications', icon: Mail, label: 'Notificações', adminOnly: true },
     { path: '/admin/settings', icon: SettingsIcon, label: 'Configurações', adminOnly: true },
   ];
 
@@ -40,9 +41,7 @@ const AdminLayout = () => {
   };
 
   const isActive = (path, exact = false) => {
-    if (exact) {
-      return location.pathname === path;
-    }
+    if (exact) return location.pathname === path;
     return location.pathname.startsWith(path);
   };
 
@@ -50,193 +49,154 @@ const AdminLayout = () => {
     const paths = location.pathname.split('/').filter(Boolean);
     const breadcrumbs = [{ label: 'Admin', path: '/admin' }];
 
-    if (paths.length > 1) {
-      if (paths[1] === 'mangas') {
-        breadcrumbs.push({ label: 'Mangás', path: '/admin/mangas' });
-        if (paths[2] === 'new') breadcrumbs.push({ label: 'Novo', path: null });
-        if (paths[2] && paths[3] === 'edit') breadcrumbs.push({ label: 'Editar', path: null });
-        if (paths[2] && paths[3] === 'chapters') breadcrumbs.push({ label: 'Capítulos', path: null });
-      } else if (paths[1] === 'novels') {
-        breadcrumbs.push({ label: 'Novels', path: '/admin/novels' });
-        if (paths[2] === 'new') breadcrumbs.push({ label: 'Nova', path: null });
-        if (paths[2] && paths[3] === 'edit') breadcrumbs.push({ label: 'Editar', path: null });
-        if (paths[2] && paths[3] === 'chapters') breadcrumbs.push({ label: 'Capítulos', path: null });
-      } else if (paths[1] === 'genres') {
-        breadcrumbs.push({ label: 'Gêneros', path: '/admin/genres' });
-      } else if (paths[1] === 'users') {
-        breadcrumbs.push({ label: 'Usuários', path: '/admin/users' });
-      }
+    if (paths[1]) {
+      const labels = {
+        mangas: 'Mangás',
+        novels: 'Novels',
+        genres: 'Gêneros',
+        users: 'Usuários',
+        notifications: 'Notificações',
+        settings: 'Configurações'
+      };
+
+      breadcrumbs.push({
+        label: labels[paths[1]] || paths[1],
+        path: `/admin/${paths[1]}`
+      });
     }
 
     return breadcrumbs;
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+
       {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 bg-white dark:bg-gray-800 border-b dark:border-gray-700 z-40">
-        <div className="flex items-center justify-between p-4">
-          <button
-            onClick={() => setIsMobileSidebarOpen(true)}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-          >
-            <Menu className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-white  dark:bg-gray-800 border-b dark:border-gray-700">
+        <div className="flex items-center justify-between p-4 hover:bg-gray-100 dark:hover:bg-gray-700">
+          <button onClick={() => setIsMobileSidebarOpen(true)}>
+            <Menu />
           </button>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Admin Panel</h1>
-          <ThemeToggle className="lg:hidden" />
+          <span className="font-bold">Admin Panel</span>
+          <ThemeToggle />
         </div>
       </div>
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full bg-white dark:bg-gray-800 border-r dark:border-gray-700 z-50 transition-all duration-300 ${
-          isSidebarOpen ? 'w-64' : 'w-20'
-        } ${
-          isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0`}
+        className={`fixed top-0 left-0 h-full z-50 bg-white dark:bg-gray-800 border-r dark:border-gray-700
+        transition-all duration-300
+        ${isSidebarOpen ? 'w-64' : 'w-20'}
+        ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        lg:translate-x-0`}
       >
-        {/* Sidebar Header */}
-        <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
-          {isSidebarOpen && (
-            <Link to="/" className="flex items-center gap-2">
-              <BookOpen className="w-8 h-8 text-primary-600 dark:text-primary-400" />
-              <span className="text-xl font-bold text-gray-900 dark:text-white">MN Studio</span>
-            </Link>
-          )}
-          <button
-            onClick={() => {
-              setIsSidebarOpen(!isSidebarOpen);
-              setIsMobileSidebarOpen(false);
-            }}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg lg:block hidden transition-colors"
-          >
-            {isSidebarOpen ? (
-              <X className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-            ) : (
-              <Menu className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-            )}
-          </button>
-          <button
-            onClick={() => setIsMobileSidebarOpen(false)}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg lg:hidden transition-colors"
-          >
-            <X className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-          </button>
-        </div>
+        {/* === SIDEBAR GRID === */}
+        <div className="flex flex-col h-full">
 
-        {/* User Info */}
-        <div className="p-4 border-b dark:border-gray-700">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary-600 dark:bg-primary-500 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0">
-              {user?.username?.charAt(0).toUpperCase()}
-            </div>
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
             {isSidebarOpen && (
-              <div className="min-w-0">
-                <p className="font-medium text-gray-900 dark:text-white truncate">
-                  {user?.username}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                  {user?.role}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Theme Toggle - POSICIONADO AQUI (melhor lugar) */}
-        <div className="px-4 py-3 border-b dark:border-gray-700">
-          <ThemeToggle 
-            className={`w-full justify-start ${isSidebarOpen ? 'px-4' : 'px-2'}`}
-            showLabel={isSidebarOpen}
-          />
-        </div>
-
-        {/* Menu Items */}
-        <nav className="p-4 space-y-2">
-          {menuItems.map((item) => {
-            if (item.adminOnly && user?.role !== 'admin') return null;
-
-            const Icon = item.icon;
-            const active = isActive(item.path, item.exact);
-
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${
-                  active
-                    ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-                title={!isSidebarOpen ? item.label : ''}
-              >
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                {isSidebarOpen && (
-                  <span className="font-medium">{item.label}</span>
-                )}
+              <Link to="/" className="flex items-center gap-2 font-bold">
+                <BookOpen className="text-primary-600" />
+                MN Studio
               </Link>
-            );
-          })}
-        </nav>
+            )}
+            <button
+              className="hidden lg:block"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            >
+              {isSidebarOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
+          </div>
 
-        {/* Bottom Actions */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t dark:border-gray-700 space-y-2">
-          <Link
-            to="/"
-            className="flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
-          >
-            <Home className="w-5 h-5 flex-shrink-0" />
-            {isSidebarOpen && <span className="font-medium">Voltar ao Site</span>}
-          </Link>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
-          >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
-            {isSidebarOpen && <span className="font-medium">Sair</span>}
-          </button>
+          {/* User */}
+          <div className="p-4 border-b dark:border-gray-700">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary-600 text-white flex items-center justify-center">
+                {user?.username?.charAt(0).toUpperCase()}
+                
+              </div>
+              {isSidebarOpen && (
+                <div>
+                  <p className="font-medium">{user?.username}</p>
+                  <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 🔥 MENU SCROLLÁVEL */}
+          <nav className="flex-1 overflow-y-auto p-3 space-y-1 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700">
+            {menuItems.map(item => {
+              if (item.adminOnly && user?.role !== 'admin') return null;
+              const Icon = item.icon;
+              const active = isActive(item.path, item.exact);
+
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  title={!isSidebarOpen ? item.label : ''}
+                  className={`relative flex items-center gap-3 px-4 py-3 rounded-lg transition
+                    ${!isSidebarOpen ? 'justify-center' : ''}
+                    ${
+                      active
+                        ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 before:absolute before:left-0 before:top-0 before:h-full before:w-1 before:bg-primary-600'
+                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                >
+                  <Icon size={18} />
+                  {isSidebarOpen && <span>{item.label}</span>}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Preferences */}
+          <div className="p-3 border-t dark:border-gray-700">
+            <ThemeToggle showLabel={isSidebarOpen} />
+          </div>
+
+          {/* Bottom */}
+          <div className="p-3 border-t dark:border-gray-700 space-y-2">
+            <Link to="/" className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+              <Home size={18} />
+              {isSidebarOpen && 'Voltar ao site'}
+            </Link>
+
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+            >
+              <LogOut size={18} />
+              {isSidebarOpen && 'Sair'}
+            </button>
+          </div>
         </div>
       </aside>
 
-      {/* Mobile Overlay */}
+      {/* Overlay */}
       {isMobileSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={() => setIsMobileSidebarOpen(false)}
         />
       )}
 
-      {/* Main Content */}
-      <main
-        className={`transition-all duration-300 ${
-          isSidebarOpen ? 'lg:ml-64' : 'lg:ml-20'
-        } pt-20 lg:pt-0`}
-      >
+      {/* Content */}
+      <main className={`transition-all ${isSidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} pt-20 lg:pt-0`}>
         <div className="p-6 lg:p-8">
-          {/* Breadcrumbs */}
-          <div className="mb-6">
-            <nav className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              {getBreadcrumbs().map((crumb, index) => (
-                <React.Fragment key={index}>
-                  {index > 0 && <ChevronRight className="w-4 h-4" />}
-                  {crumb.path ? (
-                    <Link
-                      to={crumb.path}
-                      className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                    >
-                      {crumb.label}
-                    </Link>
-                  ) : (
-                    <span className="text-gray-900 dark:text-white font-medium">
-                      {crumb.label}
-                    </span>
-                  )}
-                </React.Fragment>
-              ))}
-            </nav>
-          </div>
+          <nav className="mb-6 flex items-center gap-2 text-sm text-gray-500">
+            {getBreadcrumbs().map((c, i) => (
+              <React.Fragment key={i}>
+                {i > 0 && <ChevronRight size={14} />}
+                <Link to={c.path} className="hover:text-primary-600">
+                  {c.label}
+                </Link>
+              </React.Fragment>
+            ))}
+          </nav>
 
-          {/* Page Content */}
           <Outlet />
         </div>
       </main>

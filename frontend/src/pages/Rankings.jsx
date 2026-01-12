@@ -116,26 +116,26 @@ const Rankings = () => {
   const getMedalIcon = (position) => {
     switch (position) {
       case 1:
-        return <Crown className="w-6 h-6 text-yellow-500" />;
+        return <Crown className="w-6 h-6 text-blue-500 dark:text-blue-400" />;
       case 2:
-        return <Medal className="w-6 h-6 text-gray-400" />;
+        return <Medal className="w-6 h-6 text-gray-400 dark:text-gray-300" />;
       case 3:
-        return <Award className="w-6 h-6 text-orange-600" />;
+        return <Award className="w-6 h-6 text-orange-600 dark:text-orange-500" />;
       default:
-        return <span className="text-lg font-bold text-gray-600">#{position}</span>;
+        return <span className="text-lg font-bold text-gray-600 dark:text-gray-400">#{position}</span>;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 text-white">
+      <div className="bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600 text-white dark:bg-gradient-to-r dark:from-blue-600 dark:via-blue-700 dark:to-blue-800  shadow-md">
         <div className="container-custom py-12">
           <div className="flex items-center gap-4 mb-4">
             <Trophy className="w-12 h-12" />
             <div>
               <h1 className="text-4xl font-bold">Rankings</h1>
-              <p className="text-yellow-100">
+              <p className="text-blue-100 dark:text-blue-200">
                 Os melhores mangás, novels e usuários da plataforma
               </p>
             </div>
@@ -144,20 +144,20 @@ const Rankings = () => {
           {/* Global Stats */}
           {stats && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-              <div className="bg-white/10 backdrop-blur rounded-lg p-4">
-                <p className="text-yellow-100 text-sm">Total de Conteúdos</p>
+              <div className="bg-white/10 backdrop-blur rounded-lg p-4 dark:bg-black/20">
+                <p className="text-blue-100 text-sm dark:text-blue-200">Total de Conteúdos</p>
                 <p className="text-3xl font-bold">{formatNumber(stats.total_content)}</p>
               </div>
-              <div className="bg-white/10 backdrop-blur rounded-lg p-4">
-                <p className="text-yellow-100 text-sm">Total de Mangás</p>
+              <div className="bg-white/10 backdrop-blur rounded-lg p-4 dark:bg-black/20">
+                <p className="text-blue-100 text-sm dark:text-blue-200">Total de Mangás</p>
                 <p className="text-3xl font-bold">{formatNumber(stats.total_mangas)}</p>
               </div>
-              <div className="bg-white/10 backdrop-blur rounded-lg p-4">
-                <p className="text-yellow-100 text-sm">Total de Novels</p>
+              <div className="bg-white/10 backdrop-blur rounded-lg p-4 dark:bg-black/20">
+                <p className="text-blue-100 text-sm dark:text-blue-200">Total de Novels</p>
                 <p className="text-3xl font-bold">{formatNumber(stats.total_novels)}</p>
               </div>
-              <div className="bg-white/10 backdrop-blur rounded-lg p-4">
-                <p className="text-yellow-100 text-sm">Total de Visualizações</p>
+              <div className="bg-white/10 backdrop-blur rounded-lg p-4 dark:bg-black/20">
+                <p className="text-blue-100 text-sm dark:text-blue-200">Total de Visualizações</p>
                 <p className="text-3xl font-bold">{formatNumber(stats.total_views)}</p>
               </div>
             </div>
@@ -177,11 +177,11 @@ const Rankings = () => {
                   setActiveTab(tab.id);
                   setRankingType(rankingTypes[tab.id][0].value);
                 }}
-                className={`flex items-center gap-2 px-6 py-3 rounded-lg whitespace-nowrap transition ${
+                className={`flex items-center gap-2 px-6 py-3 rounded-lg whitespace-nowrap transform transition duration-150 ease-in-out cursor-pointer ${
                   activeTab === tab.id
-                    ? 'bg-yellow-500 text-white font-semibold shadow-lg'
-                    : 'bg-white text-gray-700 hover:bg-gray-100'
-                }`}
+                    ? 'bg-blue-500 text-white font-semibold shadow-lg dark:shadow-blue-700/30 dark:bg-blue-600 dark:text-blue-200'
+                    : 'bg-white text-gray-700 hover:bg-gray-100 dark:bg-black/20 dark:text-gray-300 dark:hover:bg-black/30'
+                } hover:scale-105 hover:shadow-xl`}
               >
                 <Icon className="w-5 h-5" />
                 {tab.label}
@@ -195,7 +195,7 @@ const Rankings = () => {
           <div className="flex flex-col md:flex-row gap-4">
             {/* Ranking Type */}
             <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
                 Tipo de Ranking
               </label>
               <div className="flex flex-wrap gap-2">
@@ -207,8 +207,8 @@ const Rankings = () => {
                       onClick={() => setRankingType(type.value)}
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
                         rankingType === type.value
-                          ? 'bg-primary-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          ? 'bg-primary-600 text-white dark:bg-primary-500 dark:text-white font-semibold shadow-lg dark:shadow-primary-700/30'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-black/20 dark:text-gray-300 dark:hover:bg-black/30'
                       }`}
                     >
                       <Icon className="w-4 h-4" />
@@ -222,13 +222,13 @@ const Rankings = () => {
             {/* Period Filter (only for mangas/novels) */}
             {(activeTab === 'mangas' || activeTab === 'novels') && (
               <div className="w-full md:w-48">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
                   Período
                 </label>
                 <select
                   value={period}
                   onChange={(e) => setPeriod(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-black/20 dark:border-gray-700 dark:text-gray-300 dark:focus:ring-primary-600"
                 >
                   {periods.map((p) => (
                     <option key={p.value} value={p.value}>
@@ -259,8 +259,8 @@ const Rankings = () => {
 
             {data.length === 0 && (
               <Card className="p-12 text-center">
-                <Trophy className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">Nenhum resultado encontrado</p>
+                <Trophy className="w-16 h-16 text-gray-400 mx-auto mb-4 dark:text-gray-300" />
+                <p className="text-gray-500 dark:text-gray-400">Nenhum resultado encontrado</p>
               </Card>
             )}
           </div>
@@ -308,26 +308,26 @@ const RankingItem = ({ item, position, type, rankingType, getMedalIcon }) => {
 
   if (isUser) {
     return (
-      <Card className={`p-4 hover:shadow-lg transition ${position <= 3 ? 'border-2 border-yellow-400' : ''}`}>
+      <Card className={`p-4 hover:shadow-lg transition ${position <= 3 ? 'border-2 border-blue-400 dark:border-blue-300' : ''}`}>
         <div className="flex items-center gap-4">
           <div className="flex-shrink-0 w-16 flex items-center justify-center">
             {getMedalIcon(position)}
           </div>
 
-          <div className="w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+          <div className="w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0 dark:bg-primary-500">
             {item.username?.charAt(0).toUpperCase()}
           </div>
 
           <div className="flex-1">
-            <h3 className="font-semibold text-lg text-gray-900">{item.username}</h3>
-            <p className="text-sm text-gray-600 capitalize">{item.role}</p>
+            <h3 className="font-semibold text-lg text-gray-900 dark:text-white">{item.username}</h3>
+            <p className="text-sm text-gray-600 capitalize dark:text-gray-300">{item.role}</p>
           </div>
 
           <div className="text-right">
-            <p className="text-2xl font-bold text-primary-600">
+            <p className="text-2xl font-bold text-primary-600 dark:text-primary-500">
               {formatNumber(getStatsValue())}
             </p>
-            <p className="text-sm text-gray-500">{getStatsLabel()}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{getStatsLabel()}</p>
           </div>
         </div>
       </Card>
@@ -340,7 +340,7 @@ const RankingItem = ({ item, position, type, rankingType, getMedalIcon }) => {
 
   return (
     <Link to={linkTo}>
-      <Card className={`p-4 hover:shadow-lg transition ${position <= 3 ? 'border-2 border-yellow-400' : ''}`}>
+      <Card className={`p-4 hover:shadow-lg transition ${position <= 3 ? 'border-2 border-blue-400 dark:border-blue-300' : ''}`}>
         <div className="flex items-center gap-4">
           <div className="flex-shrink-0 w-16 flex items-center justify-center">
             {getMedalIcon(position)}
@@ -356,17 +356,17 @@ const RankingItem = ({ item, position, type, rankingType, getMedalIcon }) => {
           />
 
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-lg text-gray-900 line-clamp-1">
+            <h3 className="font-semibold text-lg text-gray-900 line-clamp-1 dark:text-white">
               {item.title}
             </h3>
             <div className="flex gap-2 mt-1">
               {contentType && (
-                <span className="inline-block px-2 py-1 text-xs bg-primary-100 text-primary-700 rounded capitalize">
+                <span className="inline-block px-2 py-1 text-xs bg-primary-100 text-primary-700 rounded capitalize dark:bg-primary-900/30 dark:text-primary-200">
                   {contentType}
                 </span>
               )}
               {item.type && (
-                <span className="inline-block px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded capitalize">
+                <span className="inline-block px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded capitalize dark:bg-black/20 dark:text-gray-300">
                   {item.type}
                 </span>
               )}
@@ -374,10 +374,10 @@ const RankingItem = ({ item, position, type, rankingType, getMedalIcon }) => {
           </div>
 
           <div className="text-right flex-shrink-0">
-            <p className="text-2xl font-bold text-primary-600">
+            <p className="text-2xl font-bold text-primary-600 dark:text-primary-500">
               {formatNumber(getStatsValue())}
             </p>
-            <p className="text-sm text-gray-500">{getStatsLabel()}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{getStatsLabel()}</p>
           </div>
         </div>
       </Card>

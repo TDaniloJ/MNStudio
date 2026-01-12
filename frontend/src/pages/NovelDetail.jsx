@@ -39,6 +39,27 @@ const NovelDetail = () => {
     return () => clearCurrentNovel();
   }, [id]);
 
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    const checkFavoriteStatus = async () => {
+      if (isAuthenticated && currentNovel) {
+        try {
+          const data = await favoriteService.checkFavorite('novel', currentNovel.id);
+          setIsFavorite(data);
+        } catch (error) {
+          console.error('Erro ao verificar favorito:', error);
+        }
+      } else {
+        setIsFavorite(false);
+      }
+    };
+
+    checkFavoriteStatus();
+  }, [isAuthenticated, currentNovel]);
+
   const loadNovel = async () => {
     try {
       await fetchNovelById(id);

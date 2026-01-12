@@ -34,7 +34,15 @@ const Organization = require('./src/models/Organization')(sequelize, DataTypes);
 const Item = require('./src/models/Item')(sequelize, DataTypes);
 const CultivationSystem = require('./src/models/CultivationSystem')(sequelize, DataTypes);
 const MagicSystem = require('./src/models/MagicSystem')(sequelize, DataTypes);
+const Notification = require('./src/models/Notification')(sequelize, DataTypes);
+const Badge = require('./src/models/Badge')(sequelize, DataTypes);
+const Activity = require('./src/models/Activity')(sequelize, DataTypes);
+const UserBadge = require('./src/models/UserBadge')(sequelize, DataTypes);
 const seedSettings = require('./src/utils/seedSettings');
+const Coin = require('./src/models/Coin')(sequelize, DataTypes);
+const CoinPackage = require('./src/models/CoinPackage')(sequelize, DataTypes);
+const CoinTransaction = require('./src/models/CoinTransaction')(sequelize, DataTypes);
+
 
 // Objeto com todos os models
 const models = {
@@ -56,7 +64,14 @@ const models = {
   Organization,
   Item,
   CultivationSystem,
-  MagicSystem
+  MagicSystem,
+  Notification,
+  Badge,
+  Activity,
+  UserBadge,
+  Coin,
+  CoinPackage,
+  CoinTransaction
 };
 
 // Configurar associações
@@ -134,6 +149,30 @@ const syncDatabase = async () => {
     await MagicSystem.sync({ alter: true });
     console.log('✅ Tabela magic_systems criada');
 
+    await Notification.sync({ alter: true });
+    console.log('✅ Tabela notifications criada');
+
+    await Badge.sync({ alter: true });
+    console.log('✅ Tabela badges criada');
+
+    await Activity.sync({ alter: true });
+    console.log('✅ Tabela activities criada');
+
+    await UserBadge.sync({ alter: true });
+    console.log('✅ Tabela user_badges criada');
+
+    // ===== SISTEMA DE MOEDAS =====
+
+    await CoinPackage.sync({ alter: true });
+    console.log('✅ Tabela coin_packages criada');
+
+    await Coin.sync({ alter: true });
+    console.log('✅ Tabela coins criada');
+
+    await CoinTransaction.sync({ alter: true });
+    console.log('✅ Tabela coin_transactions criada');
+
+
     // Criar tabelas de junção (many-to-many)
     await sequelize.queryInterface.createTable('manga_genres', {
       manga_id: {
@@ -190,6 +229,63 @@ const syncDatabase = async () => {
       if (err.original?.code !== '42P07') throw err; // Ignora se já existe
     });
     console.log('✅ Tabela novel_genres criada');
+
+const seedCoinPackages = async () => {
+  const packages = [
+    {
+      name: 'Pacote Iniciante',
+      amount: 20,
+      bonus: 0,
+      price: 0,
+      highlight: false,
+      display_order: 1
+    },
+    {
+      name: 'Pacote Básico',
+      amount: 50,
+      bonus: 5,
+      price: 9.90,
+      highlight: false,
+      display_order: 2
+    },
+    {
+      name: 'Pacote Popular',
+      amount: 120,
+      bonus: 20,
+      price: 19.90,
+      highlight: true,
+      display_order: 3
+    },
+    {
+      name: 'Pacote Premium',
+      amount: 300,
+      bonus: 60,
+      price: 39.90,
+      highlight: false,
+      display_order: 4
+    },
+    {
+      name: 'Pacote Ultimate',
+      amount: 600,
+      bonus: 150,
+      price: 69.90,
+      highlight: false,
+      display_order: 5
+    }
+  ];
+
+  let count = 0;
+  for (const pkg of packages) {
+    const [, created] = await CoinPackage.findOrCreate({
+      where: { name: pkg.name },
+      defaults: pkg
+    });
+    if (created) count++;
+  }
+
+  console.log(`✅ ${count} pacotes de moedas inseridos`);
+};
+
 
     console.log('✅ Todas as tabelas foram criadas com sucesso!');
 

@@ -22,6 +22,7 @@ import NovelList from './pages/NovelList';
 import NovelDetail from './pages/NovelDetail';
 import NovelReader from './pages/NovelReader';
 import Profile from './pages/Profile';
+import VerifyEmail from './pages/VerifyEmail';
 import Favorites from './pages/Favorites';
 import History from './pages/History';
 import Search from './pages/Search';
@@ -30,6 +31,7 @@ import Privacy from './pages/Privacy';
 import FAQ from './pages/FAQ';
 import Contact from './pages/Contact';
 import Rankings from './pages/Rankings';
+import CoinsPage from './pages/CoinsPage';
 
 // Admin Pages
 import Dashboard from './pages/admin/Dashboard';
@@ -44,8 +46,11 @@ import MangaChapterManager from './pages/admin/MangaChapterManager';
 import NovelChapterManager from './pages/admin/NovelChapterManager';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import Settings from './pages/admin/Settings';
+import Notifications from './pages/admin/Notifications';
 
 import { useSettingsStore } from './store/settingsStore';
+
+import { CoinProvider } from './contexts/CoinContext';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, adminOnly = false, uploaderOnly = false }) => {
@@ -88,6 +93,8 @@ function App() {
   return (
     <ThemeProvider>
       <Router>
+        <CoinProvider>
+        
         <Toaster
           position="top-right"
           toastOptions={{
@@ -125,12 +132,14 @@ function App() {
           <Route path="/faq" element={<Layout><FAQ /></Layout>} />
           <Route path="/contact" element={<Layout><Contact /></Layout>} />
           <Route path="/rankings" element={<Layout><Rankings /></Layout>} />
+          <Route path="/coins" element={<ProtectedRoute><Layout><CoinsPage /></Layout></ProtectedRoute>}/>
 
           {/* Auth Routes without Layout */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<Forgot />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
 
           {/* Reader Routes without Layout */}
           <Route path="/manga/:mangaId/chapter/:chapterId" element={<MangaReader />} />
@@ -194,6 +203,7 @@ function App() {
             <Route path="novels/:id/chapters" element={<NovelChapterManager />} />
             <Route path="genres" element={<GenreManagement />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="notifications" element={<Notifications />} />
             
             <Route
               path="users"
@@ -208,6 +218,8 @@ function App() {
           {/* 404 Route */}
           <Route path="*" element={<Layout><div className="container-custom py-16 text-center"><h1 className="text-4xl font-bold">404 - Página não encontrada</h1></div></Layout>} />
         </Routes>
+
+        </CoinProvider>
       </Router>
     </ThemeProvider>
   );

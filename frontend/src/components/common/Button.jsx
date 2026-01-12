@@ -14,7 +14,8 @@ const Button = ({
     primary: 'btn-primary',
     secondary: 'btn-secondary',
     danger: 'btn-danger',
-    outline: 'border-2 border-primary-600 text-primary-600 hover:bg-primary-50'
+    outline: 'border-2 border-primary-600 text-primary-600 hover:bg-primary-50 dark:border-primary-400 dark:text-primary-400 dark:hover:bg-primary-900',
+    ghost: 'bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300',
   };
 
   const sizes = {

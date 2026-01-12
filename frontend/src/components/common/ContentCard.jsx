@@ -41,7 +41,7 @@ const ContentCard = ({ item, type = 'manga' }) => {
     <Link to={linkTo}>
       <Card hover className="group h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 transition-colors duration-200">
         {/* Cover Image */}
-        <div className="relative aspect-[2/3] overflow-hidden bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600">
+        <div className="relative aspect-[3/4] overflow-hidden bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600">
           {!imageError && imageUrl ? (
             <img
               src={imageUrl}
@@ -60,7 +60,7 @@ const ContentCard = ({ item, type = 'manga' }) => {
             <div className="absolute bottom-0 left-0 right-0 p-3">
               <div className="flex items-center gap-2 text-white text-xs mb-2">
                 <Eye className="w-3 h-3" />
-                <span>{formatNumber(item.views || 0)} views</span>
+                <span>{formatNumber(item.views || 0)} visualizações</span>
               </div>
               {item.rating > 0 && (
                 <div className="flex items-center gap-1 text-yellow-400 text-xs">
@@ -86,6 +86,25 @@ const ContentCard = ({ item, type = 'manga' }) => {
               </span>
             </div>
           )}
+
+          {/* Type Badge (for novel) */}
+          {type === 'novel' && item.type && (
+            <div className="absolute top-2 right-2">
+              <span className="px-2 py-1 text-xs font-bold rounded bg-blue-500 dark:bg-blue-600 text-white shadow-lg dark:shadow-gray-900/50 uppercase">
+                {item.type}
+              </span>
+            </div>
+          )}
+
+          {/* Adult Badge bottom-right */}
+          <div className="absolute bottom-2 right-2">
+            {(() => {
+              const isAdult = item.adult || item.is_adult || (item.age_rating && item.age_rating >= 18);
+              return (
+                <span className={`px-2 py-0.5 rounded text-xs font-semibold ${isAdult ? 'bg-red-600 text-white' : 'bg-green-600 text-white'} shadow-md`}>{isAdult ? '+18' : 'Livre'}</span>
+              );
+            })()}
+          </div>
         </div>
 
         {/* Info */}
@@ -97,36 +116,29 @@ const ContentCard = ({ item, type = 'manga' }) => {
           {/* Meta Info */}
           <div className="mt-auto space-y-1">
             <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-              <span className="flex items-center gap-1">
-                <Icon className="w-3 h-3" />
-                {item.chapters?.length || 0} cap{item.chapters?.length !== 1 ? 's' : ''}
+              <span className="flex-1 flex items-center gap-1 truncate">
+                <Icon className="w-3 h-3 flex-shrink-0" />
+                {item.chapters && item.chapters.length > 0 ? (
+                  (() => {
+                    const last = item.chapters.reduce((a, b) => {
+                      const da = new Date(a.updated_at || a.created_at || 0).getTime();
+                      const db = new Date(b.updated_at || b.created_at || 0).getTime();
+                      return da > db ? a : b;
+                    });
+                    return `Último: ${last.title || last.name || `Cap ${last.number || last.index || ''}`}`;
+                  })()
+                ) : (
+                  `${item.chapters?.length || 0} capítulos`
+                )}
               </span>
-              {item.created_at && (
-                <span className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  {formatDate(item.created_at)}
-                </span>
-              )}
+
+              <span className="flex items-center gap-1 ml-3 flex-shrink-0">
+                <Eye className="w-3 h-3" />
+                <span>{formatNumber(item.views || 0)}</span>
+              </span>
             </div>
 
-            {/* Genres */}
-            {item.genres && item.genres.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {item.genres.slice(0, 2).map((genre) => (
-                  <span
-                    key={genre.id}
-                    className="px-1.5 py-0.5 text-xs bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded"
-                  >
-                    {genre.name}
-                  </span>
-                ))}
-                {item.genres.length > 2 && (
-                  <span className="px-1.5 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded">
-                    +{item.genres.length - 2}
-                  </span>
-                )}
-              </div>
-            )}
+            {/* Genres removed as requested */}
           </div>
         </div>
       </Card>

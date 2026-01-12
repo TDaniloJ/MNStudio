@@ -1,7 +1,8 @@
-// services/mangaService.js - CORRIGIDO
 import api from './api';
 
 export const mangaService = {
+
+  // ========== MANGÁS ==========
   async getAll(params) {
     const response = await api.get('/mangas', { params });
     return response.data;
@@ -42,10 +43,30 @@ export const mangaService = {
     return response.data;
   },
 
+  // ========== CAPÍTULOS ==========
+
   async createChapter(mangaId, data) {
     const response = await api.post(`/mangas/${mangaId}/chapters`, data);
     return response.data;
   },
+
+  async updateChapter(chapterId, data) {
+    const response = await api.put(`/mangas/chapters/${chapterId}`, data);
+    return response.data;
+  },
+
+  async deleteChapter(chapterId) {
+    const response = await api.delete(`/mangas/chapters/${chapterId}`);
+    return response.data;
+  },
+
+  async getMangaChapters(mangaId) {
+    const response = await api.get(`/mangas/${mangaId}/chapters`);
+    return response.data;
+  },
+
+
+  // ========== PÁGINAS ==========
 
   async uploadPages(chapterId, files) {
     console.log('📤 Iniciando upload de páginas...');
@@ -82,6 +103,18 @@ export const mangaService = {
     }
   },
 
+  async reorderPages(chapterId, updates) {
+    const response = await api.patch(`/mangas/chapters/${chapterId}/pages/reorder`, {
+      pages: updates // Array de { id, page_number }
+    });
+    return response.data;
+  },
+
+  async deletePage(pageId) {
+    const response = await api.delete(`/mangas/pages/${pageId}`);
+    return response.data;
+  },
+
   async getChapterPages(chapterId) {
     try {
       console.log(`🔍 Buscando páginas do capítulo ${chapterId}...`);
@@ -101,18 +134,10 @@ export const mangaService = {
     }
   },
 
-  async deleteChapter(chapterId) {
-    const response = await api.delete(`/mangas/chapters/${chapterId}`);
-    return response.data;
-  },
-
-  async deletePage(pageId) {
-    const response = await api.delete(`/mangas/pages/${pageId}`);
-    return response.data;
-  },
-
-  async getMangaChapters(mangaId) {
-    const response = await api.get(`/mangas/${mangaId}/chapters`);
+  //  ========== LEITOR ==========
+  async readChapter(chapterId) {
+    const response = await api.get(`/mangas/read/${chapterId}`);
     return response.data;
   }
+
 };

@@ -25,6 +25,9 @@ db.ReadingHistory = require('./ReadingHistory')(sequelize, Sequelize);
 db.Comment = require('./Comment')(sequelize, Sequelize);
 db.Session = require('./Session')(sequelize, Sequelize);
 db.Settings = require('./Settings')(sequelize, Sequelize);
+db.Coin = require('./Coin')(sequelize, Sequelize);
+db.CoinTransaction = require('./CoinTransaction')(sequelize, Sequelize);
+db.CoinPackage = require('./CoinPackage')(sequelize, Sequelize);
 
 // ✅ ADICIONAR NOVOS MODELS DE WORLDBUILDING
 db.Character = require('./Character')(sequelize, Sequelize);
@@ -34,6 +37,12 @@ db.CultivationSystem = require('./CultivationSystem')(sequelize, Sequelize);
 db.Item = require('./Item')(sequelize, Sequelize);
 db.Organization = require('./Organization')(sequelize, Sequelize);
 db.Timeline = require('./Timeline')(sequelize, Sequelize);
+
+// ✅ ADICIONAR NOVOS MODELS DE NOTIFICAÇÕES E ACHIEVEMENTS
+db.Notification = require('./Notification')(sequelize, Sequelize);
+db.Badge = require('./Badge')(sequelize, Sequelize);
+db.Activity = require('./Activity')(sequelize, Sequelize);
+db.UserBadge = require('./UserBadge')(sequelize, Sequelize);
 
 // Definir associações
 Object.keys(db).forEach(modelName => {

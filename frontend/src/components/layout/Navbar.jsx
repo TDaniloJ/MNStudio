@@ -4,6 +4,8 @@ import { BookOpen, Menu, X, User, LogOut, Settings, Heart, History, Search } fro
 import { useAuthStore } from '../../store/authStore';
 import Button from '../common/Button';
 import ThemeToggle from '../common/ThemeToggle';
+import NotificationCenter from '../common/NotificationCenter';
+import CoinNavbarBadge from '../common/CoinNavbarBadge';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -55,23 +57,17 @@ const Navbar = () => {
               Rankings
             </Link>
             <Link 
-              to="/mangas" 
-              className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 font-medium transition"
-            >
-              Mangás
-            </Link>
-            <Link 
-              to="/novels" 
-              className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 font-medium transition"
-            >
-              Novels
-            </Link>
-            <Link 
               to="/search" 
-              className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 font-medium transition"
+              className="relative p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
             >
               <Search className="w-5 h-5" />
             </Link>
+
+            {/* Notification Center */}
+            {isAuthenticated && <NotificationCenter />}
+
+            {/* Coins */}
+            {isAuthenticated && <CoinNavbarBadge />}
 
             {/* Theme Toggle */}
             <ThemeToggle />

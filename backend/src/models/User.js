@@ -30,6 +30,15 @@ module.exports = (sequelize, DataTypes) => {
     avatar_url: {
       type: DataTypes.STRING(255)
     },
+    banner_url: {
+      type: DataTypes.STRING(255),
+      allowNull: true
+    },
+    google_sub: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      unique: true
+    },
     email_verified_at: {
       type: DataTypes.DATE,
       allowNull: true
@@ -87,6 +96,18 @@ module.exports = (sequelize, DataTypes) => {
     User.hasMany(models.Session, {
       foreignKey: 'user_id',
       as: 'sessions'
+    });
+    User.hasMany(models.Notification, {
+      foreignKey: 'user_id',
+      as: 'notifications'
+    });
+    User.hasMany(models.Activity, {
+      foreignKey: 'user_id',
+      as: 'activities'
+    });
+    User.belongsToMany(models.Badge, {
+      through: models.UserBadge,
+      as: 'badges'
     });
   };
 

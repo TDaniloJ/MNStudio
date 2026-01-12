@@ -76,15 +76,15 @@ const Contact = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary-600 to-primary-800 text-white py-16">
+      <div className="bg-gradient-to-r from-primary-600 to-primary-800 text-white py-16 dark:from-primary-800 dark:to-primary-900">
         <div className="container-custom text-center">
           <MessageSquare className="w-16 h-16 mx-auto mb-4" />
           <h1 className="text-4xl font-bold mb-4">
             Entre em Contato
           </h1>
-          <p className="text-xl text-primary-100">
+          <p className="text-xl text-primary-100 dark:text-primary-200">
             Estamos aqui para ajudar! Envie sua mensagem e responderemos em breve.
           </p>
         </div>
@@ -99,25 +99,25 @@ const Contact = () => {
               return (
                 <Card key={index} className="p-6 hover:shadow-lg transition">
                   <div className="flex items-start gap-4">
-                    <div className="p-3 bg-primary-100 rounded-lg">
-                      <Icon className="w-6 h-6 text-primary-600" />
+                    <div className="p-3 bg-primary-100 rounded-lg dark:bg-primary-900">
+                      <Icon className="w-6 h-6 text-primary-600 dark:text-primary-400" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 mb-1">
+                      <h3 className="font-semibold text-gray-900 mb-1 dark:text-white">
                         {info.title}
                       </h3>
-                      <p className="text-sm text-gray-600 mb-2">
+                      <p className="text-sm text-gray-600 mb-2 dark:text-gray-300">
                         {info.description}
                       </p>
                       {info.link ? (
                         <a
                           href={info.link}
-                          className="text-primary-600 hover:text-primary-700 font-medium"
+                          className="text-primary-600 hover:text-primary-700 font-medium dark:text-primary-400 dark:hover:text-primary-300 transition-colors"
                         >
                           {info.value}
                         </a>
                       ) : (
-                        <p className="text-gray-900 font-medium">
+                        <p className="text-gray-900 font-medium dark:text-white">
                           {info.value}
                         </p>
                       )}
@@ -128,15 +128,15 @@ const Contact = () => {
             })}
 
             {/* FAQ Link */}
-            <Card className="p-6 bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200">
-              <h3 className="font-semibold text-gray-900 mb-2">
+            <Card className="p-6 bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200 dark:from-blue-900 dark:to-purple-900 dark:border-blue-800 hover:shadow-lg transition">
+              <h3 className="font-semibold text-gray-900 mb-2 dark:text-white">
                 Dúvidas Frequentes
               </h3>
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="text-sm text-gray-600 mb-4 dark:text-gray-300">
                 Veja se sua dúvida já foi respondida em nossa Central de Ajuda
               </p>
               <a href="/faq">
-                <button className="text-sm text-primary-600 hover:text-primary-700 font-medium">
+                <button className="text-sm text-primary-600 hover:text-primary-700 font-medium dark:text-primary-400 dark:hover:text-primary-300 transition-colors">
                   Acessar FAQ →
                 </button>
               </a>
@@ -148,13 +148,13 @@ const Contact = () => {
             <Card className="p-8">
               {submitted ? (
                 <div className="text-center py-12">
-                  <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-                    <CheckCircle className="w-8 h-8 text-green-600" />
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4 dark:bg-green-900">
+                    <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
                   </div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2 dark:text-white">
                     Mensagem Enviada!
                   </h2>
-                  <p className="text-gray-600 mb-6">
+                  <p className="text-gray-600 mb-6 dark:text-gray-300">
                     Obrigado por entrar em contato. Responderemos em breve!
                   </p>
                   <Button
@@ -166,10 +166,10 @@ const Contact = () => {
                 </div>
               ) : (
                 <>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2 dark:text-white">
                     Envie sua Mensagem
                   </h2>
-                  <p className="text-gray-600 mb-6">
+                  <p className="text-gray-600 mb-6 dark:text-gray-300">
                     Preencha o formulário abaixo e nossa equipe entrará em contato
                   </p>
 
@@ -217,14 +217,14 @@ const Contact = () => {
                         ))}
                       </select>
                       {errors.subject && (
-                        <p className="mt-1 text-sm text-red-600">
+                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                           {errors.subject.message}
                         </p>
                       )}
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
                         Mensagem *
                       </label>
                       <textarea
@@ -240,7 +240,7 @@ const Contact = () => {
                         })}
                       />
                       {errors.message && (
-                        <p className="mt-1 text-sm text-red-600">
+                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                           {errors.message.message}
                         </p>
                       )}
@@ -254,15 +254,15 @@ const Contact = () => {
                           required: 'Você deve aceitar os termos'
                         })}
                       />
-                      <label className="text-sm text-gray-600">
+                      <label className="text-sm text-gray-600 dark:text-gray-300">
                         Eu concordo que minhas informações sejam usadas para responder minha mensagem de acordo com a{' '}
-                        <a href="/privacy" className="text-primary-600 hover:text-primary-700">
+                        <a href="/privacy" className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors">
                           Política de Privacidade
                         </a>
                       </label>
                     </div>
                     {errors.terms && (
-                      <p className="text-sm text-red-600">
+                      <p className="text-sm text-red-600 dark:text-red-400 mb-4">
                         {errors.terms.message}
                       </p>
                     )}
@@ -282,11 +282,11 @@ const Contact = () => {
             </Card>
 
             {/* Additional Info */}
-            <div className="mt-6 p-6 bg-blue-50 rounded-lg border border-blue-200">
-              <h3 className="font-semibold text-gray-900 mb-2">
+            <div className="mt-6 p-6 bg-blue-50 rounded-lg border border-blue-200 dark:bg-blue-900 dark:border-blue-800">
+              <h3 className="font-semibold text-gray-900 mb-2 dark:text-white">
                 ℹ️ Informações Importantes
               </h3>
-              <ul className="text-sm text-gray-700 space-y-2">
+              <ul className="text-sm text-gray-700 space-y-2 dark:text-gray-300">
                 <li>• Respondemos todas as mensagens em até 24-48 horas úteis</li>
                 <li>• Para problemas técnicos urgentes, inclua o máximo de detalhes possível</li>
                 <li>• Solicitações de uploader são analisadas individualmente</li>

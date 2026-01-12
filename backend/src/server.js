@@ -23,6 +23,11 @@ const worldbuildingRoutes = require('./routes/worldbuildingRoutes');
 const contactRoutes = require('./routes/contactRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
 const rankingRoutes = require('./routes/rankingRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const activityRoutes = require('./routes/activityRoutes');
+const badgeRoutes = require('./routes/badgeRoutes');
+const userStatsRoutes = require('./routes/userStatsRoutes');
+const coinRoutes = require('./routes/coinRoutes');
 
 const app = express();
 
@@ -55,6 +60,11 @@ app.use('/api/worldbuilding', worldbuildingRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/rankings', rankingRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/activities', activityRoutes);
+app.use('/api/badges', badgeRoutes);
+app.use('/api/users', userStatsRoutes);
+app.use('/api/coins', coinRoutes);
 
 // ROTA DE TESTE
 app.get('/', (req, res) => {

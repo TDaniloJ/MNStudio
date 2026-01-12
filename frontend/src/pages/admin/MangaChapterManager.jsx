@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Upload, Trash2, Edit, GripVertical } from 'lucide-react';
+import { ArrowLeft, Plus, Upload, Trash2, Edit, GripVertical, ArrowUp, ArrowDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { mangaService } from '../../services/mangaService';
 import { formatDate } from '../../utils/formatters';
@@ -22,7 +22,7 @@ const MangaChapterManager = () => {
   const [editingChapter, setEditingChapter] = useState(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadingChapter, setUploadingChapter] = useState(null);
-  const [chaptersWithPages, setChaptersWithPages] = useState({}); // ✅ Estado para contar páginas
+  const [chaptersWithPages, setChaptersWithPages] = useState({});
 
   useEffect(() => {
     loadManga();
@@ -37,7 +37,6 @@ const MangaChapterManager = () => {
       const chaptersData = data.manga.chapters || [];
       setChapters(chaptersData);
       
-      // ✅ CARREGAR CONTAGEM DE PÁGINAS PARA CADA CAPÍTULO
       await loadChaptersPagesCount(chaptersData);
     } catch (error) {
       toast.error('Erro ao carregar mangá');
@@ -47,14 +46,12 @@ const MangaChapterManager = () => {
     }
   };
 
-  // ✅ FUNÇÃO PARA CARREGAR CONTAGEM DE PÁGINAS
   const loadChaptersPagesCount = async (chaptersList) => {
     const pagesCount = {};
     
     for (const chapter of chaptersList) {
       try {
         const pagesData = await mangaService.getChapterPages(chapter.id);
-        // ✅ Diferentes formas que a API pode retornar
         const pages = pagesData.pages || pagesData.chapter?.pages || pagesData || [];
         pagesCount[chapter.id] = Array.isArray(pages) ? pages.length : 0;
       } catch (error) {
@@ -66,7 +63,6 @@ const MangaChapterManager = () => {
     setChaptersWithPages(pagesCount);
   };
 
-  // ✅ FUNÇÃO PARA OBTER CONTAGEM DE PÁGINAS
   const getPagesCount = (chapterId) => {
     return chaptersWithPages[chapterId] || 0;
   };
@@ -100,9 +96,8 @@ const MangaChapterManager = () => {
     setShowUploadModal(true);
   };
 
-  // ✅ ATUALIZAR CONTAGEM APÓS UPLOAD
   const handleUploadSuccess = () => {
-    loadManga(); // Recarrega tudo
+    loadManga();
   };
 
   if (loading) {
@@ -111,7 +106,6 @@ const MangaChapterManager = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button
@@ -123,10 +117,10 @@ const MangaChapterManager = () => {
             Voltar
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
               Capítulos de {manga?.title}
             </h1>
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-400">
               {chapters.length} capítulo{chapters.length !== 1 ? 's' : ''}
             </p>
           </div>
@@ -137,10 +131,9 @@ const MangaChapterManager = () => {
         </Button>
       </div>
 
-      {/* Chapters List */}
       {chapters.length === 0 ? (
         <Card className="p-12 text-center">
-          <p className="text-gray-500 mb-4">Nenhum capítulo cadastrado</p>
+          <p className="text-gray-500 mb-4 dark:text-gray-400">Nenhum capítulo cadastrado</p>
           <Button onClick={handleCreateChapter}>
             Criar Primeiro Capítulo
           </Button>
@@ -153,21 +146,40 @@ const MangaChapterManager = () => {
               <Card key={chapter.id} className="p-4 hover:shadow-lg transition">
                 <div className="flex items-center gap-4">
                   <div className="flex-shrink-0">
-                    <div className="w-16 h-20 bg-primary-100 rounded flex items-center justify-center text-primary-600 font-bold">
-                      {chapter.chapter_number}
+                    <div className="w-16 h-20 bg-primary-100 rounded flex items-center justify-center text-primary-600 font-bold dark:bg-gray-700 overflow-hidden">
+                      {(() => {
+                        const pagesCount = getPagesCount(chapter.id);
+                        
+                        if (pagesCount > 0 && chapter.pages && chapter.pages.length > 0) {
+                          return (
+                            <img
+                              src={getImageUrl(chapter.pages[0].image_url)}
+                              alt={`Capítulo ${chapter.chapter_number}`}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.parentElement.innerHTML = `<span class="text-2xl">${chapter.chapter_number}</span>`;
+                              }}
+                            />
+                          );
+                        } else if (pagesCount > 0) {
+                          return <span className="text-xs text-center">📄 {pagesCount}</span>;
+                        } else {
+                          return <span className="text-2xl">{chapter.chapter_number}</span>;
+                        }
+                      })()}
                     </div>
                   </div>
                   
                   <div className="flex-1">
-                    <h3 className="font-semibold text-lg text-gray-900">
+                    <h3 className="font-semibold text-lg text-gray-900 dark:text-white">
                       Capítulo {chapter.chapter_number}
                       {chapter.title && ` - ${chapter.title}`}
                     </h3>
-                    <p className="text-sm text-gray-600">
-                      {/* ✅ AGORA MOSTRA O NÚMERO CORRETO */}
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       {getPagesCount(chapter.id)} página{getPagesCount(chapter.id) !== 1 ? 's' : ''} • {chapter.views || 0} visualizações
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       Criado em {formatDate(chapter.created_at)}
                     </p>
                   </div>
@@ -179,18 +191,17 @@ const MangaChapterManager = () => {
                       onClick={() => handleUploadPages(chapter)}
                     >
                       <Upload className="w-4 h-4 mr-2" />
-                      {/* ✅ BOTÃO TAMBÉM MOSTRA NÚMERO CORRETO */}
                       Páginas ({getPagesCount(chapter.id)})
                     </Button>
                     <button
                       onClick={() => handleEditChapter(chapter)}
-                      className="p-2 text-gray-600 hover:text-primary-600 transition"
+                      className="p-2 text-gray-600 hover:text-primary-600 transition dark:hover:text-primary-400"
                     >
                       <Edit className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDeleteChapter(chapter.id)}
-                      className="p-2 text-gray-600 hover:text-red-600 transition"
+                      className="p-2 text-gray-600 hover:text-red-600 transition dark:hover:text-red-400"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -201,7 +212,6 @@ const MangaChapterManager = () => {
         </div>
       )}
 
-      {/* Chapter Modal */}
       {showModal && (
         <ChapterModal
           mangaId={id}
@@ -218,7 +228,6 @@ const MangaChapterManager = () => {
         />
       )}
 
-      {/* Upload Pages Modal */}
       {showUploadModal && (
         <UploadPagesModal
           chapter={uploadingChapter}
@@ -226,14 +235,13 @@ const MangaChapterManager = () => {
             setShowUploadModal(false);
             setUploadingChapter(null);
           }}
-          onSuccess={handleUploadSuccess} // ✅ USA A NOVA FUNÇÃO
+          onSuccess={handleUploadSuccess}
         />
       )}
     </div>
   );
 };
 
-// Modal de Criar/Editar Capítulo
 const ChapterModal = ({ mangaId, chapter, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -253,7 +261,6 @@ const ChapterModal = ({ mangaId, chapter, onClose, onSuccess }) => {
       setLoading(true);
 
       if (chapter) {
-        // ✅ IMPLEMENTAR EDIÇÃO SE NECESSÁRIO
         await mangaService.updateChapter(chapter.id, formData);
         toast.success('Capítulo atualizado com sucesso!');
       } else {
@@ -295,8 +302,8 @@ const ChapterModal = ({ mangaId, chapter, onClose, onSuccess }) => {
           />
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-800">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 dark:bg-blue-900 dark:border-blue-700">
+          <p className="text-sm text-blue-800 dark:text-blue-200">
             💡 <strong>Dica:</strong> Após criar o capítulo, você poderá fazer upload das páginas clicando no botão "Páginas".
           </p>
         </div>
@@ -314,13 +321,15 @@ const ChapterModal = ({ mangaId, chapter, onClose, onSuccess }) => {
   );
 };
 
-// Modal de Upload de Páginas - VERSÃO OTIMIZADA
+// ✅ MODAL COM DRAG & DROP E REORDENAÇÃO
 const UploadPagesModal = ({ chapter, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [files, setFiles] = useState([]);
   const [previews, setPreviews] = useState([]);
   const [existingPages, setExistingPages] = useState([]);
   const [loadingPages, setLoadingPages] = useState(true);
+  const [draggedIndex, setDraggedIndex] = useState(null);
+  const [reordering, setReordering] = useState(false);
 
   useEffect(() => {
     if (chapter?.id) {
@@ -333,22 +342,15 @@ const UploadPagesModal = ({ chapter, onClose, onSuccess }) => {
       setLoadingPages(true);
       const data = await mangaService.getChapterPages(chapter.id);
       
-      // ✅ FORMA PADRONIZADA DE OBTER PÁGINAS
       let pages = [];
       if (data.pages) pages = data.pages;
       else if (data.chapter?.pages) pages = data.chapter.pages;
       else if (Array.isArray(data)) pages = data;
       
-      console.log(`✅ ${pages.length} páginas carregadas para capítulo ${chapter.id}`);
-      setExistingPages(pages);
+      setExistingPages(pages.sort((a, b) => a.page_number - b.page_number));
     } catch (error) {
-      console.error('❌ Erro ao carregar páginas:', error);
-      if (error.response?.status === 404) {
-        setExistingPages([]);
-      } else {
-        toast.error('Erro ao carregar páginas existentes');
-        setExistingPages([]);
-      }
+      console.error('Erro ao carregar páginas:', error);
+      setExistingPages([]);
     } finally {
       setLoadingPages(false);
     }
@@ -367,10 +369,7 @@ const UploadPagesModal = ({ chapter, onClose, onSuccess }) => {
       return true;
     });
 
-    if (validFiles.length === 0) {
-      toast.error('Nenhuma imagem válida selecionada');
-      return;
-    }
+    if (validFiles.length === 0) return;
 
     setFiles(validFiles);
 
@@ -378,11 +377,87 @@ const UploadPagesModal = ({ chapter, onClose, onSuccess }) => {
       url: URL.createObjectURL(file),
       name: file.name,
       order: existingPages.length + index + 1,
-      file: file
+      file: file,
+      id: `new-${Date.now()}-${index}`
     }));
     
     setPreviews(newPreviews);
     e.target.value = '';
+  };
+
+  // ✅ DRAG & DROP PARA NOVAS PÁGINAS
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+
+    const newPreviews = [...previews];
+    const draggedItem = newPreviews[draggedIndex];
+    
+    newPreviews.splice(draggedIndex, 1);
+    newPreviews.splice(index, 0, draggedItem);
+    
+    // Atualiza ordem
+    newPreviews.forEach((preview, idx) => {
+      preview.order = existingPages.length + idx + 1;
+    });
+
+    setPreviews(newPreviews);
+    setDraggedIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
+
+  // ✅ MOVER COM BOTÕES
+  const movePreview = (index, direction) => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= previews.length) return;
+
+    const newPreviews = [...previews];
+    [newPreviews[index], newPreviews[newIndex]] = [newPreviews[newIndex], newPreviews[index]];
+    
+    newPreviews.forEach((preview, idx) => {
+      preview.order = existingPages.length + idx + 1;
+    });
+
+    setPreviews(newPreviews);
+  };
+
+  // ✅ REORDENAR PÁGINAS EXISTENTES
+  const handleReorderExisting = async () => {
+    try {
+      setReordering(true);
+      
+      const updates = existingPages.map((page, index) => ({
+        id: page.id,
+        page_number: index + 1
+      }));
+
+      await mangaService.reorderPages(chapter.id, updates);
+      toast.success('Páginas reordenadas com sucesso!');
+      await loadExistingPages();
+      onSuccess();
+    } catch (error) {
+      toast.error('Erro ao reordenar páginas');
+    } finally {
+      setReordering(false);
+    }
+  };
+
+  const moveExistingPage = (index, direction) => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= existingPages.length) return;
+
+    const newPages = [...existingPages];
+    [newPages[index], newPages[newIndex]] = [newPages[newIndex], newPages[index]];
+    
+    setExistingPages(newPages);
   };
 
   const handleSubmit = async (e) => {
@@ -395,27 +470,22 @@ const UploadPagesModal = ({ chapter, onClose, onSuccess }) => {
 
     try {
       setLoading(true);
-      console.log(`🚀 Enviando ${files.length} arquivos para o capítulo ${chapter.id}`);
       
-      await mangaService.uploadPages(chapter.id, files);
+      // Envia na ordem dos previews
+      const orderedFiles = previews.map(p => p.file);
+      await mangaService.uploadPages(chapter.id, orderedFiles);
       
       toast.success(`${files.length} página${files.length !== 1 ? 's' : ''} enviada${files.length !== 1 ? 's' : ''} com sucesso!`);
       
-      // ✅ LIMPEZA
       previews.forEach(preview => URL.revokeObjectURL(preview.url));
       setFiles([]);
       setPreviews([]);
       
-      // ✅ RECARREGA AS PÁGINAS
       await loadExistingPages();
-      
-      // ✅ NOTIFICA O COMPONENTE PAI PARA ATUALIZAR A CONTAGEM
       onSuccess();
       
     } catch (error) {
-      console.error('❌ Erro no upload:', error);
-      const errorMessage = error.response?.data?.error || 'Erro ao fazer upload das páginas';
-      toast.error(errorMessage);
+      toast.error(error.response?.data?.error || 'Erro ao fazer upload das páginas');
     } finally {
       setLoading(false);
     }
@@ -428,10 +498,8 @@ const UploadPagesModal = ({ chapter, onClose, onSuccess }) => {
       await mangaService.deletePage(pageId);
       toast.success('Página deletada com sucesso');
       await loadExistingPages();
-      // ✅ APÓS DELETAR, NOTIFICA O PAI PARA ATUALIZAR CONTAGEM
       onSuccess();
     } catch (error) {
-      console.error('❌ Erro ao deletar página:', error);
       toast.error('Erro ao deletar página');
     }
   };
@@ -456,42 +524,71 @@ const UploadPagesModal = ({ chapter, onClose, onSuccess }) => {
       <div className="space-y-6">
         {/* Páginas Existentes */}
         <div>
-          <h3 className="font-semibold text-gray-900 mb-3">
-            Páginas Atuais ({existingPages.length})
-            {loadingPages && <span className="text-sm text-gray-500 ml-2">Carregando...</span>}
-          </h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-gray-900 dark:text-white">
+              Páginas Atuais ({existingPages.length})
+            </h3>
+            {existingPages.length > 1 && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleReorderExisting}
+                loading={reordering}
+                variant="outline"
+              >
+                💾 Salvar Nova Ordem
+              </Button>
+            )}
+          </div>
           
           {!loadingPages && existingPages.length === 0 ? (
-            <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
-              <p className="text-gray-500">Nenhuma página cadastrada ainda</p>
+            <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg dark:border-gray-600">
+              <p className="text-gray-500 dark:text-gray-400">Nenhuma página cadastrada ainda</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-64 overflow-y-auto p-2 border rounded bg-gray-50">
-              {existingPages
-                .sort((a, b) => a.page_number - b.page_number)
-                .map((page) => (
-                  <div key={page.id} className="relative group">
-                    <img
-                      src={getImageUrl(page.image_url)}
-                      alt={`Página ${page.page_number}`}
-                      className="w-full h-32 object-cover rounded border hover:shadow-md transition"
-                      onError={(e) => {
-                        e.target.src = '/placeholder-image.jpg';
-                      }}
-                    />
-                    <div className="absolute top-1 left-1 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded">
-                      {page.page_number}
-                    </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-96 overflow-y-auto p-2 border rounded bg-gray-50 dark:bg-gray-800">
+              {existingPages.map((page, index) => (
+                <div key={page.id} className="relative group">
+                  <img
+                    src={getImageUrl(page.image_url)}
+                    alt={`Página ${page.page_number}`}
+                    className="w-full h-32 object-cover rounded border hover:shadow-md transition"
+                  />
+                  <div className="absolute top-1 left-1 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded">
+                    {page.page_number}
+                  </div>
+                  
+                  {/* Botões de Reordenação */}
+                  <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                    <button
+                      onClick={() => moveExistingPage(index, 'up')}
+                      disabled={index === 0}
+                      className="p-1 bg-blue-500 text-white rounded disabled:opacity-30"
+                      type="button"
+                      title="Mover para cima"
+                    >
+                      <ArrowUp className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => moveExistingPage(index, 'down')}
+                      disabled={index === existingPages.length - 1}
+                      className="p-1 bg-blue-500 text-white rounded disabled:opacity-30"
+                      type="button"
+                      title="Mover para baixo"
+                    >
+                      <ArrowDown className="w-3 h-3" />
+                    </button>
                     <button
                       onClick={() => handleDeletePage(page.id)}
-                      className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded opacity-0 group-hover:opacity-100 transition"
-                      title="Deletar página"
+                      className="p-1 bg-red-500 text-white rounded"
                       type="button"
+                      title="Deletar"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
-                ))}
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -499,7 +596,7 @@ const UploadPagesModal = ({ chapter, onClose, onSuccess }) => {
         {/* Upload de Novas Páginas */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
               Adicionar Novas Páginas *
             </label>
             <input
@@ -510,30 +607,55 @@ const UploadPagesModal = ({ chapter, onClose, onSuccess }) => {
               className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
               disabled={loading}
             />
-            <p className="mt-1 text-xs text-gray-500">
-              Formatos: JPEG, PNG, WebP, GIF. Múltiplas imagens permitidas.
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              📌 Arraste as imagens para reordenar antes de enviar
             </p>
           </div>
 
-          {/* Preview das Novas Páginas */}
+          {/* Preview com Drag & Drop */}
           {previews.length > 0 && (
             <div>
-              <h3 className="font-semibold text-gray-900 mb-3">
-                Preview das Novas Páginas ({previews.length})
+              <h3 className="font-semibold text-gray-900 mb-3 dark:text-white">
+                Preview - Arraste para Reordenar ({previews.length})
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-64 overflow-y-auto border rounded p-2 bg-white">
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-96 overflow-y-auto border rounded p-2 bg-white dark:bg-gray-800">
                 {previews.map((preview, index) => (
-                  <div key={index} className="relative">
+                  <div
+                    key={preview.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDragEnd={handleDragEnd}
+                    className={`relative cursor-move ${draggedIndex === index ? 'opacity-50' : ''}`}
+                  >
+                    <div className="absolute top-1 left-1 bg-primary-600 text-white text-xs px-2 py-1 rounded font-bold z-10">
+                      {preview.order}
+                    </div>
+                    <div className="absolute top-1 right-1 bg-gray-800 bg-opacity-75 p-1 rounded opacity-0 group-hover:opacity-100 transition z-10">
+                      <GripVertical className="w-4 h-4 text-white" />
+                    </div>
                     <img
                       src={preview.url}
                       alt={`Preview ${index + 1}`}
-                      className="w-full h-32 object-cover rounded border-2 border-primary-400"
+                      className="w-full h-32 object-cover rounded border-2 border-primary-400 hover:shadow-md transition"
                     />
-                    <div className="absolute top-1 left-1 bg-primary-600 text-white text-xs px-2 py-1 rounded font-bold">
-                      {preview.order}
-                    </div>
-                    <div className="absolute bottom-1 left-1 right-1 bg-black bg-opacity-50 text-white text-xs px-1 py-0.5 rounded truncate text-center">
-                      {preview.name}
+                    <div className="flex gap-1 mt-1">
+                      <button
+                        type="button"
+                        onClick={() => movePreview(index, 'up')}
+                        disabled={index === 0}
+                        className="flex-1 p-1 bg-blue-500 text-white rounded text-xs disabled:opacity-30"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => movePreview(index, 'down')}
+                        disabled={index === previews.length - 1}
+                        className="flex-1 p-1 bg-blue-500 text-white rounded text-xs disabled:opacity-30"
+                      >
+                        ↓
+                      </button>
                     </div>
                   </div>
                 ))}

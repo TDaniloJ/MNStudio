@@ -16,6 +16,7 @@ import Card from '../../components/common/Card';
 import Loading from '../../components/common/Loading';
 import Button from '../../components/common/Button';
 import { formatNumber } from '../../utils/formatters';
+import NotificationBroadcastPanel from '../../components/admin/NotificationBroadcastPanel';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -104,6 +105,8 @@ const Dashboard = () => {
     }
   };
 
+
+  
   // ✅ FUNÇÃO PARA OBTER CONTAGEM
   const getChaptersCount = (item, type) => {
     const key = `${type}_${item.id}`;
@@ -324,5 +327,10 @@ const StatCard = ({ icon: Icon, label, value, color }) => {
     </Card>
   );
 };
+
+{/* Admin Notifications */}
+
+<NotificationBroadcastPanel />
+
 
 export default Dashboard;

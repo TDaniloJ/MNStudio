@@ -96,7 +96,7 @@ const WorldbuildingPanel = ({ novelId, onSelect }) => {
     <Card className="p-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-gray-900 flex items-center gap-2 dark:text-white">
-          <Globe className="w-5 h-5 text-primary-600" />
+          <Globe className="w-5 h-5 text-primary-600 dark:text-primary-500" />
           Worldbuilding
         </h3>
       </div>
@@ -110,15 +110,15 @@ const WorldbuildingPanel = ({ novelId, onSelect }) => {
               type="button"
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap transition ${
+              className={`flex items-center gap-2 px-4 py-2 mt-2 ml-1 rounded-lg whitespace-nowrap transition ${
                 activeTab === tab.id
-                  ? 'bg-primary-100 text-primary-700 font-medium'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-primary-100 text-primary-700 font-medium dark:bg-primary-700/20 dark:text-white dark:font-medium dark:outline dark:outline-1 dark:outline-primary-500'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white dark:outline dark:outline-1 dark:outline-gray-600'
               }`}
             >
               <Icon className="w-4 h-4" />
               {tab.label}
-              <span className="text-xs bg-white px-1.5 py-0.5 rounded-full">
+              <span className="text-xs bg-white px-1.5 py-0.5 rounded-full dark:bg-gray-800 dark:text-gray-300 dark:outline dark:outline-1 dark:outline-gray-600">
                 {tab.count}
               </span>
             </button>
@@ -134,13 +134,10 @@ const WorldbuildingPanel = ({ novelId, onSelect }) => {
             <Button
               size="sm"
               onClick={() => handleCreate('character')}
-              className="w-full"
-            >
-
+              className="w-full">
               <span className="w-full">
               <Plus className="w-4 h-4 mr-2" />
               Adicionar Personagem
-
               </span>
             </Button>
 
@@ -255,17 +252,17 @@ const CharacterCard = ({ character, onEdit, onDelete, onSelect }) => {
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <h4 className="font-semibold text-gray-900">{character.name}</h4>
+            <h4 className="font-semibold text-gray-900 dark:text-white">{character.name}</h4>
             {character.role && (
-              <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
+              <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full dark:bg-blue-900 dark:text-blue-400">
                 {character.role}
               </span>
             )}
           </div>
-          <p className="text-sm text-gray-600 line-clamp-2">{character.description}</p>
+          <p className="text-sm text-gray-600 line-clamp-2 dark:text-gray-400">{character.description}</p>
           
           {showDetails && character.traits && (
-            <div className="mt-2 text-xs text-gray-500 space-y-1">
+            <div className="mt-2 text-xs text-gray-500 space-y-1 dark:text-gray-400">
               {character.traits.split('\n').map((trait, i) => (
                 <p key={i}>• {trait}</p>
               ))}
@@ -277,7 +274,7 @@ const CharacterCard = ({ character, onEdit, onDelete, onSelect }) => {
           <button
             type="button"
             onClick={() => setShowDetails(!showDetails)}
-            className="p-1 text-gray-600 hover:text-primary-600 transition"
+            className="p-1 text-gray-600 hover:text-primary-600 transition dark:text-white dark:hover:text-primary-500"
             title={showDetails ? 'Ocultar' : 'Ver detalhes'}
           >
             {showDetails ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -285,14 +282,14 @@ const CharacterCard = ({ character, onEdit, onDelete, onSelect }) => {
           <button
             type="button"
             onClick={onEdit}
-            className="p-1 text-gray-600 hover:text-primary-600 transition"
+            className="p-1 text-gray-600 hover:text-primary-600 transition dark:text-white dark:hover:text-primary-500"
           >
             <Edit className="w-4 h-4" />
           </button>
           <button
             type="button"
             onClick={onDelete}
-            className="p-1 text-gray-600 hover:text-red-600 transition"
+            className="p-1 text-gray-600 hover:text-red-600 transition dark:text-red-400 dark:hover:text-red-500"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -302,7 +299,7 @@ const CharacterCard = ({ character, onEdit, onDelete, onSelect }) => {
       <button
         type="button"
         onClick={() => onSelect(character)}
-        className="mt-2 w-full text-xs text-primary-600 hover:text-primary-700 font-medium"
+        className="mt-2 w-full text-xs text-primary-600 hover:text-primary-700 font-medium dark:text-primary-500 dark:hover:text-primary-400"
       >
         Inserir no capítulo
       </button>
@@ -379,7 +376,7 @@ const CultivationSystemCard = ({ system, onSelect }) => (
 const WorldbuildingModal = ({ type, novelId, item, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
-  const [providerConfig, setProviderConfig] = useState({ provider: 'anthropic' });
+  const [providerConfig, setProviderConfig] = useState(null);
   const [formData, setFormData] = useState({
     name: item?.name || '',
     description: item?.description || '',
@@ -541,8 +538,8 @@ const WorldbuildingModal = ({ type, novelId, item, onClose, onSuccess }) => {
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* AI Generator Section */}
-        <Card className="p-4 bg-purple-50 border-purple-200">
-          <h4 className="font-semibold text-purple-900 mb-3 flex items-center">
+        <Card className="p-4 bg-purple-50 border-purple-200 dark:bg-purple-900/20 dark:border-purple-700">
+          <h4 className="font-semibold text-purple-900 mb-3 flex items-center dark:text-white">
             <Sparkles className="w-5 h-5 mr-2" />
             Gerar com IA
           </h4>
@@ -566,7 +563,7 @@ const WorldbuildingModal = ({ type, novelId, item, onClose, onSuccess }) => {
                 value={formData.traits}
                 onChange={(e) => setFormData({ ...formData, traits: e.target.value })}
                 placeholder="Características do personagem (opcional)... Ex: Corajoso, inteligente, reservado"
-                className="w-full px-3 py-2 border rounded-lg text-sm"
+                className="w-full px-3 py-2 mt-3 border rounded-lg text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-500"
                 rows={2}
               />
             </>
@@ -585,7 +582,7 @@ const WorldbuildingModal = ({ type, novelId, item, onClose, onSuccess }) => {
                 value={formData.elements}
                 onChange={(e) => setFormData({ ...formData, elements: e.target.value })}
                 placeholder="Elementos do mundo (opcional)... Ex: Magia, tecnologia avançada, dragões"
-                className="w-full px-3 py-2 border rounded-lg text-sm"
+                className="w-full px-3 py-2 mt-3 border rounded-lg text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-500"
                 rows={2}
               />
             </>
@@ -604,7 +601,7 @@ const WorldbuildingModal = ({ type, novelId, item, onClose, onSuccess }) => {
                 value={formData.rules}
                 onChange={(e) => setFormData({ ...formData, rules: e.target.value })}
                 placeholder="Regras do sistema (opcional)..."
-                className="w-full px-3 py-2 border rounded-lg text-sm"
+                className="w-full px-3 py-2 mt-3 border rounded-lg text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-500"
                 rows={2}
               />
             </>
@@ -633,7 +630,7 @@ const WorldbuildingModal = ({ type, novelId, item, onClose, onSuccess }) => {
             type="button"
             onClick={handleAIGenerate}
             loading={aiLoading}
-            className="w-full bg-purple-600 hover:bg-purple-700"
+            className="w-full bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 text-white mt-3"
           >
             <Sparkles className="w-4 h-4 mr-2" />
             Gerar com IA
@@ -651,8 +648,8 @@ const WorldbuildingModal = ({ type, novelId, item, onClose, onSuccess }) => {
 
         {/* Associate to Novel */}
         {novelId ? (
-          <div className="text-sm text-gray-700">
-            Associado a: <span className="font-medium text-gray-900">{novelOptions.find(o => String(o.value) === String(novelId))?.label || `Novel ${novelId}`}</span>
+          <div className="text-sm text-gray-700 dark:text-white">
+            Associado a: <span className="font-medium text-gray-900 dark:text-white">{novelOptions.find(o => String(o.value) === String(novelId))?.label || `Novel ${novelId}`}</span>
           </div>
         ) : (
           <div>
@@ -667,14 +664,14 @@ const WorldbuildingModal = ({ type, novelId, item, onClose, onSuccess }) => {
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-white">
             Descrição *
           </label>
           <textarea
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             rows={6}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-primary-500"
             placeholder={`Descreva o ${getTypeLabel(type).toLowerCase()}...`}
             required
           />
@@ -691,14 +688,14 @@ const WorldbuildingModal = ({ type, novelId, item, onClose, onSuccess }) => {
             />
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-white">
                 Características
               </label>
               <textarea
                 value={formData.traits}
                 onChange={(e) => setFormData({ ...formData, traits: e.target.value })}
                 rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-500"
                 placeholder="Uma característica por linha..."
               />
             </div>
@@ -708,7 +705,7 @@ const WorldbuildingModal = ({ type, novelId, item, onClose, onSuccess }) => {
         {/* Cultivation levels */}
         {type === 'cultivation' && formData.levels?.length > 0 && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-white">
               Níveis de Cultivo
             </label>
             <div className="space-y-2 max-h-60 overflow-y-auto">

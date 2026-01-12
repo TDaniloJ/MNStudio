@@ -100,3 +100,22 @@ exports.getUserFavorites = async (req, res) => {
     res.status(500).json({ error: 'Erro ao buscar favoritos' });
   }
 };
+
+exports.checkFavorite = async (req, res) => {
+  try {
+    const { type, id } = req.params;
+
+    const favorite = await Favorite.findOne({
+      where: {
+        user_id: req.userId,
+        content_type: type,
+        content_id: id
+      }
+    });
+
+    res.json({ isFavorite: !!favorite });
+  } catch (error) {
+    console.error('Erro ao verificar favorito:', error);
+    res.status(500).json({ error: 'Erro ao verificar favorito' });
+  }
+};

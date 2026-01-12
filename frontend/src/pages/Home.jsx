@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { TrendingUp, BookOpen, FileText, ArrowRight, Clock, Eye, Star } from 'lucide-react';
 import { Swiper, SwiperSlide } from 'swiper/react';
-import { Autoplay, Pagination, Navigation, EffectFade } from 'swiper/modules';
+import { Autoplay, Pagination, Navigation, EffectCoverflow } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/pagination';
 import 'swiper/css/navigation';
@@ -114,6 +114,29 @@ const Home = () => {
 
       setRecommended(allRecommended);
 
+      // Anexar capítulos para os cards (para mostrar último capítulo / contagem)
+      const attachChapters = async (items) => {
+        return await Promise.all(items.map(async (it) => {
+          try {
+            if (it.contentType === 'manga') {
+              const ch = await mangaService.getMangaChapters(it.id);
+              it.chapters = ch.chapters || ch.chapters || ch.chapters || [];
+            } else {
+              const ch = await novelService.getNovelChapters(it.id);
+              it.chapters = ch.chapters || ch.chapters || ch.chapters || [];
+            }
+          } catch (e) {
+            it.chapters = it.chapters || [];
+          }
+          return it;
+        }));
+      };
+
+      // fetch in parallel but limited set sizes (already limited by API calls)
+      setFeatured(await attachChapters(allFeatured));
+      setRecentUpdates(await attachChapters(allRecent));
+      setRecommended(await attachChapters(allRecommended));
+
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
@@ -130,12 +153,20 @@ const Home = () => {
       {/* Hero Slider */}
       <div className="relative bg-gray-900 dark:bg-gray-950 mb-8">
         <Swiper
-          modules={[Autoplay, Pagination, Navigation, EffectFade]}
-          spaceBetween={0}
-          slidesPerView={1}
-          effect="fade"
+          modules={[Autoplay, Pagination, Navigation, EffectCoverflow]}
+          spaceBetween={30}
+          slidesPerView={'auto'}
+          centeredSlides={true}
+          loop={true}
+          coverflowEffect={{
+            rotate: 0,
+            stretch: 0,
+            depth: 200,
+            modifier: 1,
+            slideShadows: false
+          }}
           autoplay={{
-            delay: 5000,
+            delay: 3000,
             disableOnInteraction: false,
           }}
           pagination={{
@@ -148,10 +179,10 @@ const Home = () => {
             prevEl: '.swiper-button-prev',
           }}
           className="hero-slider"
-          style={{ height: '500px' }}
+          style={{ height: '420px' }}
         >
           {featured.map((item) => (
-            <SwiperSlide key={`${item.type}-${item.id}`}>
+            <SwiperSlide key={`${item.type}-${item.id}`} style={{ width: 320 }}>
               <FeaturedSlide item={item} />
             </SwiperSlide>
           ))}
@@ -239,74 +270,21 @@ const Home = () => {
 const FeaturedSlide = ({ item }) => {
   const [imageError, setImageError] = useState(false);
   const imageUrl = getImageUrl(item.cover_image);
-  
-  // ✅ CORRIGIDO: Usar o type definido corretamente
   const link = `/${item.type}/${item.id}`;
 
   return (
-    <Link to={link} className="relative h-full block group">
-      <div className="absolute inset-0">
+    <Link to={link} className="block">
+      <div className="flex items-center justify-center">
         {!imageError && imageUrl ? (
           <img
             src={imageUrl}
             alt={item.title}
-            className="w-full h-full object-cover"
+            className="w-64 h-80 sm:w-72 sm:h-80 md:w-80 md:h-80 lg:w-96 lg:h-96 object-cover rounded-lg shadow-lg transition-transform duration-300"
             onError={() => setImageError(true)}
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-r from-gray-800 to-gray-900 dark:from-gray-900 dark:to-gray-950" />
+          <div className="w-64 h-80 sm:w-72 sm:h-80 md:w-80 md:h-80 lg:w-96 lg:h-96 bg-gray-800 rounded-lg" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent dark:from-black/90 dark:via-black/60" />
-      </div>
-
-      <div className="relative h-full flex items-center">
-        <div className="container-custom">
-          <div className="max-w-2xl">
-            <div className="flex items-center gap-3 mb-4">
-              <span className="px-3 py-1 bg-primary-600 dark:bg-primary-500 text-white rounded-full text-sm font-semibold">
-                {item.type === 'manga' ? 'MANGÁ' : 'NOVEL'}
-              </span>
-
-              {item.status && (
-                <span className={`px-3 py-1 rounded-full text-sm ${
-                  item.status === 'ongoing' 
-                    ? 'bg-green-600 text-white' 
-                    : 'bg-blue-600 text-white'
-                }`}>
-                  {item.status === 'ongoing' ? 'Em Andamento' : 'Completo'}
-                </span>
-              )}
-            </div>
-
-            <h2 className="text-5xl font-bold text-white mb-4 group-hover:text-primary-400 transition-colors">
-              {item.title}
-            </h2>
-
-            <p className="text-lg text-gray-200 dark:text-gray-300 mb-6 line-clamp-3">
-              {item.description || 'Uma obra incrível que você não pode perder!'}
-            </p>
-
-            <div className="flex items-center gap-6 text-white mb-6">
-              <div className="flex items-center gap-2">
-                <Eye className="w-5 h-5" />
-                <span>{formatNumber(item.views)} views</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {item.type === 'manga' ? (
-                  <BookOpen className="w-5 h-5" />
-                ) : (
-                  <FileText className="w-5 h-5" />
-                )}
-                <span>{item.chapters?.length || 0} capítulos</span>
-              </div>
-            </div>
-
-            <Button size="lg" className="bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600">
-              Começar a Ler
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </Button>
-          </div>
-        </div>
       </div>
     </Link>
   );

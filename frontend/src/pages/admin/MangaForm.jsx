@@ -337,6 +337,10 @@ const onSubmit = async (data) => {
               )}
             </div>
 
+            {/* Classificação Etária */} {/* ✅ IMPLEMENTAR */}
+              
+
+
             {/* Author and Artist */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input

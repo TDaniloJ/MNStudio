@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { 
-  User, Mail, Lock, Camera, Settings, Shield, 
+import {
+  User, Mail, Lock, Camera, Settings, Shield,
   CreditCard, Monitor, Download, Trash2, LogOut,
   Smartphone, Globe, Bell, CheckCircle, XCircle,
   Key, QrCode, ShieldCheck, Activity, Edit, Eye
@@ -12,9 +12,12 @@ import { useAuthStore } from '../store/authStore';
 import { authService } from '../services/authService';
 import { getImageUrl } from '../utils/formatters';
 import { ROLE_LABELS } from '../utils/constants';
+import { statsService } from '../services/statsService';
+import { activityService } from '../services/activityService';
 import Card from '../components/common/Card';
 import Input from '../components/common/Input';
 import Button from '../components/common/Button';
+import { use } from 'react';
 
 // 🔧 MOVER Componente de Confirmação para ANTES do componente principal
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Confirmar", danger = false }) => {
@@ -29,8 +32,8 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirm
           <Button variant="secondary" onClick={onClose}>
             Cancelar
           </Button>
-          <Button 
-            variant={danger ? "danger" : "primary"} 
+          <Button
+            variant={danger ? "danger" : "primary"}
             onClick={onConfirm}
           >
             {confirmText}
@@ -50,6 +53,12 @@ const Profile = () => {
   const [avatarFile, setAvatarFile] = useState(null);
   const [dragOver, setDragOver] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [bannerPreview, setBannerPreview] = useState(null);
+  const [bannerFile, setBannerFile] = useState(null);
+  const [bioText, setBioText] = useState(user?.bio || '');
+  const [stats, setStats] = useState(null);
+  const [activity, setActivity] = useState([]);
+  const [achievements, setAchievements] = useState([]);
 
   // Estados para novas funcionalidades
   const [emailVerification, setEmailVerification] = useState({
@@ -78,6 +87,7 @@ const Profile = () => {
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [show2FAModal, setShow2FAModal] = useState(false);
+  const [unlinkGoogleLoading, setUnlinkGoogleLoading] = useState(false);
 
   const { register: registerProfile, handleSubmit: handleSubmitProfile, formState: { errors: errorsProfile }, reset: resetProfile } = useForm({
     defaultValues: {
@@ -107,6 +117,20 @@ const Profile = () => {
 
   const currentTabs = isEditing ? privateTabs : publicTabs;
 
+  // Conquistas
+  useEffect(() => {
+    async function loadAchievements() {
+      try {
+        const data = await badgeService.getMyBadges();
+        setAchievements(data);
+      } catch (err) {
+        console.error('Erro ao carregar conquistas:', err);
+      }
+    }
+
+    loadAchievements();
+  }, []);
+
   // 🔄 Alternar entre modo visualização e edição
   const handleEditToggle = () => {
     if (isEditing) {
@@ -117,6 +141,53 @@ const Profile = () => {
     }
     setIsEditing(!isEditing);
   };
+
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const data = await statsService.getMyStats();
+        setStats(data);
+      } catch (err) {
+        console.error('Erro ao carregar stats:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadStats();
+  }, []);
+
+  // Sincronizar biografia com dados do usuário
+  useEffect(() => {
+    if (user?.bio !== undefined) {
+      setBioText(user.bio || '');
+    }
+  }, [user?.bio]);
+
+  //Atividade Recentes
+  useEffect(() => {
+    if (user?.id !== undefined) {
+      async function loadActivity() {
+        try {
+          const data = await activityService.getMyActivity();
+          setActivity(data);
+        } catch (err) {
+          console.error('Erro ao carregar atividade:', err);
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      loadActivity();
+    }
+  }, [user?.id]);
+
+
+  useEffect(() => {
+    if (user?.bio !== undefined) {
+      setBioText(user.bio || '');
+    }
+  }, [user]);
 
   // Efeitos para carregar dados
   useEffect(() => {
@@ -137,6 +208,20 @@ const Profile = () => {
       toast.success('Email de verificação enviado!');
     } catch (error) {
       toast.error(error.response?.data?.error || 'Erro ao enviar email de verificação');
+    }
+  };
+
+  // 🌐 Desvincular Google
+  const handleUnlinkGoogle = async () => {
+    try {
+      setUnlinkGoogleLoading(true);
+      await authService.unlinkGoogle();
+      updateUser({ ...user, google_sub: null });
+      toast.success('Conta desvinculada do Google com sucesso');
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Erro ao desvincular Google');
+    } finally {
+      setUnlinkGoogleLoading(false);
     }
   };
 
@@ -237,7 +322,7 @@ const Profile = () => {
     try {
       setLoading(true);
       const response = await authService.exportUserData();
-      
+
       const blob = new Blob([JSON.stringify(response.data, null, 2)], {
         type: 'application/json'
       });
@@ -247,7 +332,7 @@ const Profile = () => {
       a.download = `meus-dados-${new Date().toISOString().split('T')[0]}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      
+
       toast.success('Dados exportados com sucesso!');
     } catch (error) {
       toast.error('Erro ao exportar dados');
@@ -298,7 +383,7 @@ const Profile = () => {
 
     console.log('✅ Avatar selecionado:', file.name, file.size);
     setAvatarFile(file);
-    
+
     const reader = new FileReader();
     reader.onloadend = () => {
       setAvatarPreview(reader.result);
@@ -311,10 +396,41 @@ const Profile = () => {
     setAvatarPreview(null);
   };
 
+  const processBannerFile = (file) => {
+    if (file && file.type.startsWith('image/')) {
+      setBannerFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setBannerPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleBannerChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processBannerFile(file);
+    }
+  };
+
+  const handleRemoveBanner = () => {
+    setBannerFile(null);
+    setBannerPreview(null);
+  };
+
+  const handleBannerDrop = useCallback((e) => {
+    e.preventDefault();
+    setDragOver(false);
+
+    const file = e.dataTransfer.files[0];
+    processBannerFile(file);
+  }, []);
+
   const handleDrop = useCallback((e) => {
     e.preventDefault();
     setDragOver(false);
-    
+
     const file = e.dataTransfer.files[0];
     processAvatarFile(file);
   }, []);
@@ -336,6 +452,7 @@ const Profile = () => {
       const formData = new FormData();
       formData.append('username', data.username);
       formData.append('email', data.email);
+      formData.append('bio', bioText);
 
       if (avatarFile) {
         formData.append('avatar', avatarFile);
@@ -343,12 +460,27 @@ const Profile = () => {
 
       const response = await authService.updateProfile(formData);
       updateUser(response.user);
-      
+
+      // Atualizar banner se houver
+      if (bannerFile) {
+        const bannerFormData = new FormData();
+        bannerFormData.append('banner', bannerFile);
+        try {
+          const bannerResponse = await authService.updateBanner(bannerFormData);
+          updateUser(prev => ({ ...prev, banner_url: bannerResponse.banner_url }));
+        } catch (error) {
+          console.error('Erro ao atualizar banner:', error);
+        }
+      }
+
       // Resetar estados após sucesso
       setAvatarFile(null);
       setAvatarPreview(null);
-      
+      setBannerFile(null);
+      setBannerPreview(null);
+
       toast.success('Perfil atualizado com sucesso!');
+      setIsEditing(false);
     } catch (error) {
       toast.error(error.response?.data?.error || 'Erro ao atualizar perfil');
     } finally {
@@ -377,68 +509,110 @@ const Profile = () => {
   const PublicProfileView = () => (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2">
-        <Card className="p-6">
-          <div className="flex items-center gap-6 mb-6">
-              <div className="relative">
-              <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 border-4 border-white dark:border-gray-800 shadow-lg">
-                {user?.avatar_url ? (
-                  <img
-                    src={getImageUrl(user.avatar_url)}
-                    alt="Avatar"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-primary-600 text-white text-3xl font-bold">
-                    {user?.username?.charAt(0).toUpperCase()}
-                  </div>
-                )}
-              </div>
+        <Card className="overflow-hidden">
+          {/* Banner */}
+          {user?.banner_url ? (
+            <div className="w-full h-40 bg-gray-200 dark:bg-gray-700 overflow-hidden">
+              <img
+                src={getImageUrl(user.banner_url)}
+                alt="Banner"
+                className="w-full h-full object-cover"
+              />
             </div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{user?.username}</h2>
-              <p className="text-gray-600 dark:text-gray-400">{ROLE_LABELS[user?.role]}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Membro desde {user?.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : 'N/A'}
-              </p>
-            </div>
-          </div>
+          ) : (
+            <div className="w-full h-40 bg-gradient-to-r from-primary-600 to-primary-400"></div>
+          )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <h3 className="font-semibold text-gray-900 dark:text-white">Informações de Contato</h3>
-              <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                <Mail className="w-4 h-4" />
-                <span>{user?.email}</span>
-                {user?.email_verified_at && (
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                )}
+          <div className="p-6">
+            <div className="flex items-center gap-6 mb-6">
+              <div className="relative -mt-20">
+                <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 border-4 border-white dark:border-gray-800 shadow-lg">
+                  {user?.avatar_url ? (
+                    <img
+                      src={getImageUrl(user.avatar_url)}
+                      alt="Avatar"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-primary-600 text-white text-3xl font-bold">
+                      {user?.username?.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{user?.username}</h2>
+                <p className="text-gray-600 dark:text-gray-400">{ROLE_LABELS[user?.role]}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Membro desde {user?.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : 'N/A'}
+                </p>
               </div>
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <h3 className="font-semibold text-gray-900 dark:text-white">Informações de Contato</h3>
+                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                  <Mail className="w-4 h-4" />
+                  <span>{user?.email}</span>
+                  {user?.email_verified_at && (
+                    <CheckCircle className="w-4 h-4 text-green-500" />
+                  )}
+                  {user?.google_sub && (
+                    <span className="ml-2 inline-flex items-center gap-1 text-sm bg-blue-50 text-blue-700 dark:bg-blue-900/10 dark:text-blue-300 px-2 py-0.5 rounded">
+                      <ShieldCheck className="w-3 h-3" />
+                      Vinculado ao Google
+                    </span>
+                  )}
+                </div>
+              </div>
 
               <div className="space-y-2">
-              <h3 className="font-semibold text-gray-900 dark:text-white">Estatísticas</h3>
-              <div className="flex gap-4 text-sm">
-                <div>
-                  <p className="font-medium">Posts</p>
-                  <p className="text-gray-600 dark:text-gray-400">24</p>
-                </div>
-                <div>
-                  <p className="font-medium">Seguidores</p>
-                  <p className="text-gray-600 dark:text-gray-400">128</p>
-                </div>
-                <div>
-                  <p className="font-medium">Seguindo</p>
-                  <p className="text-gray-600 dark:text-gray-400">56</p>
+                <h3 className="font-semibold text-gray-900 dark:text-white">
+                  Resumo do Leitor
+                </h3>
+
+                <div className="flex gap-6 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span>⭐</span>
+                    <div>
+                      <p className="font-medium">Favoritos</p>
+                      <p className="text-gray-600 dark:text-gray-400">
+                        {stats?.total.favorites || 0}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span>📖</span>
+                    <div>
+                      <p className="font-medium">Capítulos Concluídos</p>
+                      <p className="text-gray-600 dark:text-gray-400">
+                        {stats?.total.completed_chapters || 0}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span>👁️</span>
+                    <div>
+                      <p className="font-medium">Leituras Ativas</p>
+                      <p className="text-gray-600 dark:text-gray-400">
+                        {stats?.total.active_readings || 0}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          <div className="mt-6 pt-6 border-t">
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Biografia</h3>
-            <p className="text-gray-600 dark:text-gray-400">
-              {user?.bio || 'Este usuário ainda não adicionou uma biografia.'}
-            </p>
+            </div>
+
+            <div className="mt-6 pt-6 border-t">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Biografia</h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                {user?.bio || 'Este usuário ainda não adicionou uma biografia.'}
+              </p>
+            </div>
           </div>
         </Card>
       </div>
@@ -447,6 +621,23 @@ const Profile = () => {
         <Card className="p-6">
           <h3 className="font-semibold text-lg mb-4 text-gray-900 dark:text-white">Atividade Recente</h3>
           <div className="space-y-3">
+
+            {activity.length === 0 && (
+              <p className="text-gray-600 dark:text-gray-400">Nenhuma atividade recente.</p>
+            )}
+            {activity.map((item) => (
+              <div key={item.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
+                  <Activity className="w-4 h-4 text-primary-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{item.title}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{item.description}</p>
+                </div>
+              </div>
+            ))}
+            
+            {/* Exemplo de atividade estática */}
             <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                 <Activity className="w-4 h-4 text-blue-600" />
@@ -456,21 +647,26 @@ const Profile = () => {
                 <p className="text-xs text-gray-500 dark:text-gray-400">2 horas atrás</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                <User className="w-4 h-4 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">Novo seguidor</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">1 dia atrás</p>
-              </div>
-            </div>
           </div>
         </Card>
 
         <Card className="p-6">
           <h3 className="font-semibold text-lg mb-4 text-gray-900 dark:text-white">Conquistas</h3>
           <div className="grid grid-cols-3 gap-3">
+
+            {achievements.length === 0 && (
+              <p className="text-gray-600 dark:text-gray-400">Nenhuma conquista conquistada.</p>
+            )}
+            {achievements.map((item) => (
+              <div key={item.id} className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/10 rounded-lg">
+                <div className="w-10 h-10 mx-auto bg-yellow-100 rounded-full flex items-center justify-center text-yellow-600 text-lg mb-1">
+                  {item.icon}
+                </div>
+                <span className="text-xs font-medium">{item.title}</span>
+              </div>
+            ))}
+
+            {/* Exemplos de conquistas estáticas */}
             <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/10 rounded-lg">
               <div className="w-10 h-10 mx-auto bg-yellow-100 rounded-full flex items-center justify-center text-yellow-600 text-lg mb-1">
                 👤
@@ -498,9 +694,8 @@ const Profile = () => {
   // Componente de Upload de Avatar com Drag & Drop (apenas no modo edição)
   const AvatarUploadWithDrop = () => (
     <div
-      className={`border-2 border-dashed rounded-lg p-6 text-center transition cursor-pointer ${
-        dragOver ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/10' : 'border-gray-300 hover:border-gray-400 dark:border-gray-600 dark:hover:border-gray-500 dark:bg-transparent'
-      }`}
+      className={`border-2 border-dashed rounded-lg p-6 text-center transition cursor-pointer ${dragOver ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/10' : 'border-gray-300 hover:border-gray-400 dark:border-gray-600 dark:hover:border-gray-500 dark:bg-transparent'
+        }`}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -561,11 +756,10 @@ const Profile = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 pb-3 px-4 font-medium transition whitespace-nowrap ${
-                    activeTab === tab.id
+                  className={`flex items-center gap-2 pb-3 px-4 font-medium transition whitespace-nowrap ${activeTab === tab.id
                       ? 'border-b-2 border-primary-600 text-primary-600'
                       : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                  }`}
+                    }`}
                 >
                   <Icon className="w-4 h-4" />
                   {tab.label}
@@ -606,13 +800,103 @@ const Profile = () => {
                         </div>
                       )}
 
+                      {/* Provedor Social */}
+                      {user?.google_sub && (
+                        <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800 rounded-lg">
+                          <ShieldCheck className="w-5 h-5 text-blue-600" />
+                          <div className="flex-1">
+                            <span className="text-sm font-medium text-blue-800 dark:text-blue-300">Conta vinculada ao Google</span>
+                            <p className="text-sm text-blue-700 dark:text-blue-400">Você pode fazer login usando sua conta Google</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Banner Upload */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                          Banner do Perfil
+                        </label>
+                        <div
+                          className={`border-2 border-dashed rounded-lg p-6 text-center transition cursor-pointer ${dragOver ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/10' : 'border-gray-300 hover:border-gray-400 dark:border-gray-600'
+                            }`}
+                          onDrop={handleBannerDrop}
+                          onDragOver={handleDragOver}
+                          onDragLeave={handleDragLeave}
+                        >
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            id="banner-upload"
+                            onChange={handleBannerChange}
+                          />
+                          <label htmlFor="banner-upload" className="cursor-pointer">
+                            <Camera className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              Clique ou arraste a imagem do banner
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                              PNG, JPG até 10MB (recomendado 1920x400)
+                            </p>
+                          </label>
+                        </div>
+
+                        {/* Preview do Banner */}
+                        {(bannerPreview || user?.banner_url) && (
+                          <div className="mt-4 space-y-3">
+                            <div className="relative w-full h-32 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
+                              <img
+                                src={bannerPreview || getImageUrl(user.banner_url)}
+                                alt="Banner preview"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              {bannerFile && (
+                                <>
+                                  <p className="flex-1 text-sm text-green-600 dark:text-green-400">
+                                    ✅ {bannerFile.name}
+                                  </p>
+                                  <Button
+                                    type="button"
+                                    variant="danger"
+                                    size="sm"
+                                    onClick={handleRemoveBanner}
+                                  >
+                                    Remover
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Biografia */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Biografia ({bioText.length}/500)
+                        </label>
+                        <textarea
+                          value={bioText}
+                          onChange={(e) => setBioText(e.target.value.slice(0, 500))}
+                          placeholder="Conte um pouco sobre você..."
+                          maxLength={500}
+                          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-800 dark:text-white resize-none"
+                          rows="4"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          Máximo 500 caracteres
+                        </p>
+                      </div>
+
                       {/* Avatar Upload */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                           Foto do Perfil
                         </label>
                         <AvatarUploadWithDrop />
-                        
+
                         {/* Preview do Avatar */}
                         {(avatarPreview || user?.avatar_url) && (
                           <div className="flex items-center gap-4 mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
@@ -691,8 +975,8 @@ const Profile = () => {
                         >
                           Descartar
                         </Button>
-                        <Button 
-                          type="submit" 
+                        <Button
+                          type="submit"
                           loading={loading}
                           disabled={!avatarFile && !errorsProfile}
                         >
@@ -721,12 +1005,44 @@ const Profile = () => {
                       <div>
                         <p className="text-sm text-gray-600 dark:text-gray-400">Status</p>
                         <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                          <span className="font-medium text-green-700">Ativo</span>
+                          
+                          {user?.is_active ? (
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          ) : (
+                            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                          )}
+                          <span className="font-medium">{user?.is_active ? 'Ativo' : 'Inativo'}</span>
+
                         </div>
                       </div>
                     </div>
                   </Card>
+
+                  {/* Provedores Sociais */}
+                  {user?.google_sub && (
+                    <Card className="p-6">
+                      <h3 className="font-semibold text-lg mb-4">Contas Vinculadas</h3>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/10 rounded-lg border border-blue-100 dark:border-blue-800">
+                          <div className="flex items-center gap-3">
+                            <ShieldCheck className="w-5 h-5 text-blue-600" />
+                            <div>
+                              <p className="font-medium text-sm text-blue-900 dark:text-blue-100">Google</p>
+                              <p className="text-xs text-blue-700 dark:text-blue-300">Conta vinculada</p>
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            loading={unlinkGoogleLoading}
+                            onClick={handleUnlinkGoogle}
+                          >
+                            Desvincular
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  )}
                 </div>
               </div>
             )}
@@ -736,7 +1052,7 @@ const Profile = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Alteração de Senha */}
                 <Card className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Alterar Senha</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 dark:text-white">Alterar Senha</h3>
                   <form onSubmit={handleSubmitPassword(handlePasswordChange)} className="space-y-4">
                     <Input
                       label="Senha Atual"
@@ -753,19 +1069,19 @@ const Profile = () => {
                       label="Nova Senha"
                       type="password"
                       placeholder="••••••••"
-                      icon={Key}
+                      icon={Lock}
                       error={errorsPassword.newPassword?.message}
                       {...registerPassword('newPassword', {
                         required: 'Nova senha é obrigatória',
                         minLength: {
-                          value: 6,
-                          message: 'Senha deve ter no mínimo 6 caracteres'
+                          value: 8,
+                          message: 'Senha deve ter no mínimo 8 caracteres'
                         }
                       })}
                     />
 
                     <Input
-                      label="Confirmar Nova Senha"
+                      label="Confirmar Senha"
                       type="password"
                       placeholder="••••••••"
                       icon={Lock}
@@ -796,14 +1112,14 @@ const Profile = () => {
                 <Card className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2 dark:text-white">
                         Autenticação de Dois Fatores
                       </h3>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
                         Adicione uma camada extra de segurança à sua conta
                       </p>
                     </div>
-                    <ShieldCheck className="w-6 h-6 text-gray-400" />
+                    <ShieldCheck className="w-6 h-6 text-gray-400 dark:text-gray-400" />
                   </div>
 
                   {twoFA.enabled ? (
@@ -825,7 +1141,7 @@ const Profile = () => {
                         <XCircle className="w-5 h-5" />
                         <span className="font-medium">2FA Desativado</span>
                       </div>
-                      <Button 
+                      <Button
                         onClick={enable2FA}
                         loading={twoFA.settingUp}
                         className="w-full"
@@ -903,7 +1219,7 @@ const Profile = () => {
             {activeTab === 'preferences' && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Notificações</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 dark:text-white">Notificações</h3>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
@@ -920,7 +1236,7 @@ const Profile = () => {
                           })}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600 dark:peer-checked:bg-primary-600"></div>
                       </label>
                     </div>
 
@@ -939,17 +1255,17 @@ const Profile = () => {
                           })}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600 dark:peer-checked:bg-primary-600"></div>
                       </label>
                     </div>
                   </div>
                 </Card>
 
                 <Card className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Preferências Gerais</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 dark:text-white">Preferências Gerais</h3>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
                         Idioma
                       </label>
                       <select
@@ -958,7 +1274,7 @@ const Profile = () => {
                           ...preferences,
                           language: e.target.value
                         })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
                       >
                         <option value="pt-BR">Português (Brasil)</option>
                         <option value="en-US">English (US)</option>
@@ -967,7 +1283,7 @@ const Profile = () => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
                         Fuso Horário
                       </label>
                       <select
@@ -976,7 +1292,7 @@ const Profile = () => {
                           ...preferences,
                           timezone: e.target.value
                         })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
                       >
                         <option value="America/Sao_Paulo">Brasília (UTC-3)</option>
                         <option value="America/New_York">New York (UTC-5)</option>
@@ -985,7 +1301,7 @@ const Profile = () => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
                         Tema
                       </label>
                       <select
@@ -994,7 +1310,7 @@ const Profile = () => {
                           ...preferences,
                           theme: e.target.value
                         })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
                       >
                         <option value="light">Claro</option>
                         <option value="dark">Escuro</option>
@@ -1010,29 +1326,29 @@ const Profile = () => {
             {activeTab === 'privacy' && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Exportação de Dados</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 dark:text-white">Exportação de Dados</h3>
                   <div className="space-y-4">
                     <p className="text-gray-600 dark:text-gray-400">
                       Exporte todos os seus dados pessoais em formato JSON. Isso inclui suas informações de perfil, atividades e configurações.
                     </p>
-                    <Button 
+                    <Button
                       onClick={handleExportData}
                       loading={loading}
                       variant="outline"
-                      className="w-full"
+                      className="w-full dark:text-white dark:hover:text-black dark:border-gray-600 dark:hover:border-gray-600"
                     >
-                      <Download className="w-4 h-4 mr-2" />
+                      <Download className="w-4 h-4 mr-2 dark:text-white" />
                       Exportar Meus Dados
                     </Button>
                   </div>
                 </Card>
 
-                <Card className="p-6 border-red-200">
+                <Card className="p-6 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/10 border">
                   <div className="flex items-start gap-3 mb-4">
-                    <Trash2 className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+                    <Trash2 className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5 dark:text-red-400" />
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900">Excluir Conta</h3>
-                      <p className="text-sm text-gray-600 mt-1">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Excluir Conta</h3>
+                      <p className="text-sm text-gray-600 mt-1 dark:text-gray-400">
                         Esta ação não pode ser desfeita. Todos os seus dados serão permanentemente removidos.
                       </p>
                     </div>
@@ -1045,7 +1361,7 @@ const Profile = () => {
                       onChange={(e) => setDeleteConfirm(e.target.value)}
                       placeholder="CONFIRMAR"
                     />
-                    <Button 
+                    <Button
                       variant="danger"
                       onClick={() => setShowDeleteModal(true)}
                       disabled={deleteConfirm !== 'CONFIRMAR'}
@@ -1064,17 +1380,17 @@ const Profile = () => {
               <Card className="p-6">
                 <div className="flex items-start justify-between mb-6">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Assinatura</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Assinatura</h3>
                     <p className="text-gray-600 dark:text-gray-400">Gerencie sua assinatura e método de pagamento</p>
                   </div>
-                  <CreditCard className="w-6 h-6 text-gray-400" />
+                  <CreditCard className="w-6 h-6 text-gray-400 dark:text-gray-600" />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="p-6 border-2 border-primary-200 rounded-lg bg-primary-50">
-                    <h4 className="font-semibold text-primary-900 mb-2">Plano Atual</h4>
-                    <p className="text-2xl font-bold text-primary-600 mb-2">Grátis</p>
-                    <p className="text-primary-700 text-sm">
+                  <div className="p-6 border-2 border-primary-200 rounded-lg bg-primary-50 dark:bg-primary-900/10">
+                    <h4 className="font-semibold text-primary-900 mb-2 dark:text-white">Plano Atual</h4>
+                    <p className="text-2xl font-bold text-primary-600 mb-2 dark:text-white">Grátis</p>
+                    <p className="text-primary-700 text-sm dark:text-gray-400">
                       Acesso básico a todas as funcionalidades principais
                     </p>
                   </div>
@@ -1082,10 +1398,10 @@ const Profile = () => {
                   <div className="space-y-4">
                     <div className="p-4 border rounded-lg">
                       <h5 className="font-semibold mb-2">Próximo Passo</h5>
-                      <p className="text-sm text-gray-600 mb-3">
+                      <p className="text-sm text-gray-600 mb-3 dark:text-gray-400">
                         Atualize para o plano Premium para desbloquear recursos exclusivos
                       </p>
-                      <Button className="w-full">
+                      <Button className="w-full" >
                         Ver Planos Premium
                       </Button>
                     </div>
@@ -1113,15 +1429,15 @@ const Profile = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <Card className="p-6 max-w-md w-full">
             <h3 className="text-lg font-semibold mb-4">Configurar Autenticação de Dois Fatores</h3>
-            
+
             <div className="text-center mb-4">
               <p className="text-sm text-gray-600 mb-4">
                 Escaneie o QR code com seu aplicativo autenticador
               </p>
               {twoFA.qrCode && (
-                <img 
-                  src={twoFA.qrCode} 
-                  alt="QR Code para 2FA" 
+                <img
+                  src={twoFA.qrCode}
+                  alt="QR Code para 2FA"
                   className="mx-auto border rounded-lg"
                 />
               )}

@@ -14,6 +14,7 @@ const { validationResult } = require('express-validator');
 const { Op } = require('sequelize');
 const speakeasy = require('speakeasy'); // Para 2FA
 const QRCode = require('qrcode'); // Para QR Code do 2FA
+const emailService = require('../services/emailService'); // Serviço de email
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -64,7 +65,8 @@ exports.register = async (req, res) => {
         id: user.id,
         username: user.username,
         email: user.email,
-        role: user.role
+        role: user.role,
+        created_at: user.created_at
       },
       token
     });
@@ -111,7 +113,9 @@ exports.login = async (req, res) => {
         username: user.username,
         email: user.email,
         role: user.role,
-        avatar_url: user.avatar_url
+        avatar_url: user.avatar_url,
+        google_sub: user.google_sub,
+        created_at: user.created_at
       },
       token
     });
@@ -143,6 +147,7 @@ exports.getMe = async (req, res) => {
         avatar_url: user.avatar_url,
         created_at: user.created_at, // ✅ Incluir created_at
         email_verified_at: user.email_verified_at,
+        google_sub: user.google_sub,
         two_factor_enabled: user.two_factor_enabled,
         preferences: user.preferences,
         bio: user.bio
@@ -156,11 +161,14 @@ exports.getMe = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
-    const { username, email } = req.body;
+    const { username, email, bio } = req.body;
+    console.log('req.userId:', req.userId);
+    console.log('req.user:', req.user);
     const user = await User.findByPk(req.userId);
 
     if (username) user.username = username;
     if (email) user.email = email;
+    if (bio !== undefined) user.bio = bio;
 
     if (req.file) {
       user.avatar_url = `/uploads/avatars/${req.file.filename}`;
@@ -175,7 +183,10 @@ exports.updateProfile = async (req, res) => {
         username: user.username,
         email: user.email,
         role: user.role,
-        avatar_url: user.avatar_url
+        avatar_url: user.avatar_url,
+        banner_url: user.banner_url,
+        bio: user.bio,
+        google_sub: user.google_sub
       }
     });
   } catch (error) {
@@ -209,18 +220,38 @@ exports.changePassword = async (req, res) => {
 
 exports.sendVerificationEmail = async (req, res) => {
   try {
-    // Em produção, você enviaria um email real aqui
-    // Por enquanto, apenas simulamos o envio
-    console.log(`Email de verificação enviado para: ${req.user.email}`);
+    console.log('[sendVerificationEmail] Iniciando...');
+    const user = await User.findByPk(req.userId);
+    console.log('[sendVerificationEmail] Usuário encontrado:', user?.id);
     
+    if (!user) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    // Gerar token de verificação válido por 24h
+    const verificationToken = jwt.sign(
+      { id: user.id, email: user.email, type: 'email_verification' },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    // Construir link de verificação
+    const verificationLink = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
+    console.log('[sendVerificationEmail] Link:', verificationLink);
+
+    // Enviar email
+    console.log('[sendVerificationEmail] Enviando email para:', user.email);
+    await emailService.sendVerificationEmail(user.email, user.username, verificationLink);
+    console.log('[sendVerificationEmail] Email enviado com sucesso');
+
     res.json({ 
       message: 'Email de verificação enviado com sucesso',
-      // Em produção, retornaria um token para verificação
-      verification_token: 'simulated_token_' + Date.now()
+      verification_token: verificationToken
     });
   } catch (error) {
-    console.error('Erro ao enviar email de verificação:', error);
-    res.status(500).json({ error: 'Erro ao enviar email de verificação' });
+    console.error('[sendVerificationEmail] ❌ Erro completo:', error);
+    console.error('[sendVerificationEmail] Stack:', error.stack);
+    res.status(500).json({ error: 'Erro ao enviar email de verificação', details: error.message });
   }
 };
 
@@ -615,7 +646,7 @@ exports.resetPassword = async (req, res) => {
   }
 };
 
-// 🔐 LOGIN COM GOOGLE
+// 🔐 LOGIN COM GOOGLE (verificação via tokeninfo do Google)
 exports.googleLogin = async (req, res) => {
   try {
     const { googleToken } = req.body;
@@ -624,52 +655,69 @@ exports.googleLogin = async (req, res) => {
       return res.status(400).json({ error: 'Token do Google é obrigatório' });
     }
 
-    // Verificar token com Google (em produção, você deveria verificar com Google)
-    // Para teste, você pode decodificar manualmente ou usar biblioteca google-auth-library
+    // Verificar token com Google usando tokeninfo endpoint
     let decoded;
     try {
-      // TODO: Implementar verificação real com Google
-      // const ticket = await client.verifyIdToken({
-      //   idToken: googleToken,
-      //   audience: process.env.GOOGLE_CLIENT_ID
-      // });
-      // decoded = ticket.getPayload();
+      const resp = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${googleToken}`);
+      if (!resp.ok) {
+        const errBody = await resp.text();
+        console.error('Google tokeninfo resposta não OK:', resp.status, errBody);
+        return res.status(401).json({ error: 'Token inválido ou não autorizado pelo Google', detail: errBody });
+      }
 
-      // Simulação para testes - você precisa instalar @google-cloud/identity-toolkit ou similar
-      decoded = jwt.decode(googleToken);
-      if (!decoded) {
-        return res.status(401).json({ error: 'Token inválido' });
+      decoded = await resp.json();
+      console.log('🔍 Payload Google tokeninfo:', decoded);
+
+      // Se houver GOOGLE_CLIENT_ID configurado, validar audience
+      if (process.env.GOOGLE_CLIENT_ID && decoded.aud && decoded.aud !== process.env.GOOGLE_CLIENT_ID) {
+        console.error('❌ Audience (aud) inválido:', decoded.aud);
+        return res.status(401).json({ error: 'Token não destinado a este aplicativo (aud mismatch)' });
       }
     } catch (error) {
-      console.error('Erro ao verificar token do Google:', error);
+      console.error('Erro ao verificar token do Google via tokeninfo:', error);
       return res.status(401).json({ error: 'Falha ao validar token do Google' });
     }
 
-    // Extrair dados do token
-    const { email, name, picture } = decoded;
+    // Extrair dados do token (tokeninfo retorna campos como email, name, picture)
+    const email = decoded.email;
+    const name = decoded.name || decoded.email?.split('@')[0];
+    const picture = decoded.picture;
+    const googleSub = decoded.sub;
 
     if (!email) {
       return res.status(400).json({ error: 'Email não encontrado no token' });
     }
 
+    console.log('🔍 Google login para email:', email);
+
     // Buscar ou criar usuário
     let user = await User.findOne({ where: { email } });
 
     if (!user) {
-      // Criar novo usuário com dados do Google
       const username = name ? name.replace(/\s+/g, '_').toLowerCase() : email.split('@')[0];
-      
+
       user = await User.create({
         username,
         email,
-        password_hash: await bcrypt.hash(Math.random().toString(36), 10), // Senha aleatória
+        password_hash: await bcrypt.hash(Math.random().toString(36), 10),
         avatar_url: picture || null,
+        google_sub: googleSub || null,
         role: 'reader'
       });
-    } else if (picture && !user.avatar_url) {
-      // Atualizar avatar se não tiver
-      user.avatar_url = picture;
-      await user.save();
+
+      console.log('✅ Usuário criado via Google:', user.id, user.email);
+    } else {
+      let changed = false;
+      if (picture && !user.avatar_url) {
+        user.avatar_url = picture;
+        changed = true;
+      }
+      if (!user.google_sub && googleSub) {
+        user.google_sub = googleSub;
+        changed = true;
+      }
+      if (changed) await user.save();
+      console.log('ℹ️ Usuário existente autenticado via Google:', user.id, user.email);
     }
 
     // Gerar token
@@ -682,12 +730,147 @@ exports.googleLogin = async (req, res) => {
         username: user.username,
         email: user.email,
         role: user.role,
-        avatar_url: user.avatar_url
+        avatar_url: user.avatar_url,
+        google_sub: user.google_sub,
+        created_at: user.created_at
       },
       token
     });
   } catch (error) {
     console.error('Erro ao fazer login com Google:', error);
     res.status(500).json({ error: 'Erro ao fazer login com Google' });
+  }
+};
+
+// 🌐 DESVINCULAR GOOGLE
+exports.unlinkGoogle = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.userId);
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    if (!user.google_sub) {
+      return res.status(400).json({ error: 'Esta conta não está vinculada ao Google' });
+    }
+
+    // Remover vinculação do Google
+    user.google_sub = null;
+    await user.save();
+
+    console.log('✅ Google desvinculado para usuário:', user.id, user.email);
+
+    res.json({ 
+      message: 'Conta desvinculada do Google com sucesso',
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        google_sub: null
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao desvincular Google:', error);
+    res.status(500).json({ error: 'Erro ao desvincular Google' });
+  }
+};
+
+// 🔐 VERIFICAR EMAIL
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ error: 'Token é obrigatório' });
+    }
+
+    // Verificar e decodificar token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (error) {
+      return res.status(401).json({ error: 'Token inválido ou expirado' });
+    }
+
+    // Validar tipo de token
+    if (decoded.type !== 'email_verification') {
+      return res.status(400).json({ error: 'Token não é de verificação de email' });
+    }
+
+    // Buscar usuário
+    const user = await User.findByPk(decoded.id);
+    if (!user) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    // Validar email no token
+    if (user.email !== decoded.email) {
+      return res.status(400).json({ error: 'Email não corresponde' });
+    }
+
+    // Marcar email como verificado
+    user.email_verified_at = new Date();
+    await user.save();
+
+    console.log('✅ Email verificado para usuário:', user.id, user.email);
+
+    res.json({
+      message: 'Email verificado com sucesso!',
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        email_verified_at: user.email_verified_at
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao verificar email:', error);
+    res.status(500).json({ error: 'Erro ao verificar email' });
+  }
+};
+
+// Atualizar banner do usuário
+exports.updateBanner = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.userId);
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    if (req.file) {
+      user.banner_url = `/uploads/avatars/${req.file.filename}`;
+      await user.save();
+
+      return res.json({
+        message: 'Banner atualizado com sucesso',
+        banner_url: user.banner_url
+      });
+    }
+
+    res.status(400).json({ error: 'Nenhuma imagem fornecida' });
+  } catch (error) {
+    console.error('Erro ao atualizar banner:', error);
+    res.status(500).json({ error: 'Erro ao atualizar banner' });
+  }
+};
+
+// Deletar banner do usuário
+exports.deleteBanner = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.userId);
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    user.banner_url = null;
+    await user.save();
+
+    res.json({ message: 'Banner removido com sucesso' });
+  } catch (error) {
+    console.error('Erro ao remover banner:', error);
+    res.status(500).json({ error: 'Erro ao remover banner' });
   }
 };

@@ -215,7 +215,16 @@ exports.getMangaById = async (req, res) => {
           model: MangaChapter, 
           as: 'chapters',
           attributes: ['id', 'chapter_number', 'title', 'views', 'created_at'],
-          order: [['chapter_number', 'ASC']]
+          order: [['chapter_number', 'ASC']],
+          include: [
+            {
+              model: MangaPage,
+              as: 'pages',
+              attributes: ['id', 'page_number', 'image_url'],
+              limit: 1, // ✅ APENAS A PRIMEIRA PÁGINA
+              order: [['page_number', 'ASC']]
+            }
+          ]
         }
       ]
     });
