@@ -14,6 +14,24 @@ const ActivityLogView = ({ userId }) => {
     fetchActivities();
   }, [userId]);
 
+  useEffect(() => {
+    handleFilterChange(filter);
+  }, [filter]);
+  
+  const handleFilterChange = async (type) => {
+    setFilter(type);
+    try {
+      setLoading(true);
+      const filterType = type === 'all' ? null : type;
+      const data = await activityService.getActivities(filterType, 50);
+      setActivities(data.activities);
+    } catch (error) {
+      toast.error('Erro ao buscar atividades');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchActivities = async () => {
     try {
       setLoading(true);

@@ -26,6 +26,7 @@ import Loading from '../components/common/Loading';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import { useSettingsStore } from '../store/settingsStore';
+import { notificationService } from '../services/userEnhancementService';
 
 const NovelReader = () => {
   const { novelId, chapterId } = useParams();
@@ -70,8 +71,24 @@ const NovelReader = () => {
   useEffect(() => {
     loadChapter();
     loadNovelData();
-    loadPreferences();
-    
+    loadPreferences();   
+
+    const handleMarkAsRead = async () => {
+      try {
+        // ... marcar como lido ...
+        
+        // Atualizar notificações
+        const data = await notificationService.getNotifications(false, 10);
+        setNotifications(data.notifications);
+        setUnreadCount(data.unread_count);
+        
+        // Toast de confirmação
+        toast.success('Capítulo marcado como lido!');
+      } catch (error) {
+        toast.error('Erro ao marcar capítulo');
+      }
+    };
+
     // Track reading progress
     const handleScroll = () => {
       const article = document.querySelector('article');
@@ -757,6 +774,13 @@ const NovelReader = () => {
             />
           </div>
         </article>
+      </div>
+
+      <div>
+        {/* ... conteúdo do leitor ... */}
+        <Button onClick={handleMarkAsRead}>
+          Marcar como Lido
+        </Button>
       </div>
 
       {/* Navigation */}

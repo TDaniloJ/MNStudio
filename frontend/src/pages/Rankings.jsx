@@ -26,6 +26,7 @@ const Rankings = () => {
   const [data, setData] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     loadData();
@@ -34,6 +35,30 @@ const Rankings = () => {
   useEffect(() => {
     loadStats();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'global') {
+      setPeriod('all');
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    getTotal(activeTab);
+  }, [data]);
+
+  const handleTabClick = (tab) => {
+    setActiveTab(tab);
+  };
+
+  // Total capitulos for mangas/novels rankings
+  const getTotal = (type) => {
+    if (type === 'mangas') {
+      return stats?.totalMangas || 0;
+    } else if (type === 'novels') {
+      return stats?.totalNovels || 0;
+    }
+    return 0;
+  };
 
   const loadData = async () => {
     try {
@@ -100,8 +125,8 @@ const Rankings = () => {
     ],
     users: [
       { value: 'uploads', label: 'Mais Uploads', icon: TrendingUp },
-      { value: 'views', label: 'Mais Visualizações', icon: Eye },
-      { value: 'chapters', label: 'Mais Capítulos', icon: BookOpen }
+      { value: 'views', label: 'Mais Vistos', icon: Eye },
+      { value: 'chapters', label: 'Capítulos Lidos', icon: BookOpen }
     ]
   };
 

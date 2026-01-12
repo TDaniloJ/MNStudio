@@ -105,3 +105,40 @@ exports.deleteChapter = async (req, res) => {
     res.status(500).json({ error: 'Erro ao deletar capítulo' });
   }
 };
+
+exports.markAsRead = async (req, res) => {
+  try {
+    const { userId } = req;
+    const { chapterId } = req.params;
+
+    const chapter = await NovelChapter.findByPk(chapterId, {
+      include: { association: 'novel' }
+    });
+
+    // Registrar leitura
+    const readingHistory = await ReadingHistory.create({
+      user_id: userId,
+      chapter_id: chapterId,
+      novel_id: chapter.novel_id,
+      completed_at: new Date()
+    });
+
+    // 📊 REGISTRAR ATIVIDADE
+    await Activity.create({
+      user_id: userId,
+      type: 'chapter_read',
+      description: `Leu o capítulo ${chapter.chapter_number}: "${chapter.title}" de "${chapter.novel.title}"`,
+      related_id: chapterId,
+      related_type: 'chapter',
+      metadata: {
+        novelId: chapter.novel_id,
+        novelTitle: chapter.novel.title
+      }
+    });
+
+    res.json({ message: 'Capítulo marcado como lido' });
+  } catch (error) {
+    console.error('Erro:', error);
+    res.status(500).json({ error: 'Erro ao marcar capítulo' });
+  }
+};

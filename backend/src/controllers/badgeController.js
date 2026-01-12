@@ -147,4 +147,50 @@ class BadgeController {
   }
 }
 
+async function checkAndUnlockBadges(userId) {
+  const user = await User.findByPk(userId);
+  
+  // 1. Contar favoritos
+  const favoriteCount = await Favorite.count({
+    where: { user_id: userId }
+  });
+
+  // 2. Verificar e desbloquear badge de "Colecionador"
+  if (favoriteCount >= 10) {
+    const collectorBadge = await Badge.findOne({
+      where: { condition_type: 'favorite_count', condition_value: 10 }
+    });
+
+    if (collectorBadge) {
+      const [userBadge, created] = await UserBadge.findOrCreate({
+        where: { user_id: userId, badge_id: collectorBadge.id }
+      });
+
+      if (created) {
+        // 📢 NOTIFICAR USUÁRIO
+        await Notification.create({
+          user_id: userId,
+          type: 'system',
+          title: '🏆 Nova Conquista!',
+          message: `Você desbloqueou a badge "${collectorBadge.name}"!`,
+          related_id: collectorBadge.id,
+          related_type: 'badge',
+          action_url: '/profile?tab=achievements'
+        });
+
+        // 📊 REGISTRAR ATIVIDADE
+        await Activity.create({
+          user_id: userId,
+          type: 'badge_earned',
+          description: `Desbloqueou a badge "${collectorBadge.name}"`,
+          related_id: collectorBadge.id,
+          related_type: 'badge'
+        });
+
+        console.log(`✅ Badge "${collectorBadge.name}" desbloqueada para usuário ${userId}`);
+      }
+    }
+  }
+}
+
 module.exports = new BadgeController();

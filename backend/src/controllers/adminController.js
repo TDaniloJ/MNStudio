@@ -74,3 +74,40 @@ exports.deleteUser = async (req, res) => {
     res.status(500).json({ error: 'Erro ao deletar usuário' });
   }
 };
+
+exports.getNotificationStats = async (req, res) => {
+  try {
+    const totalNotifications = await Notification.count();
+    const unreadNotifications = await Notification.count({
+      where: { read_at: null }
+    });
+
+    const notificationsByType = await Notification.findAll({
+      attributes: ['type', [sequelize.fn('COUNT', '*'), 'count']],
+      group: ['type']
+    });
+
+    const badgesCreated = await Badge.count();
+    const badgesUnlocked = await UserBadge.count();
+
+    const activitiesLogged = await Activity.count();
+
+    res.json({
+      notifications: {
+        total: totalNotifications,
+        unread: unreadNotifications,
+        byType: notificationsByType
+      },
+      badges: {
+        total: badgesCreated,
+        unlocked: badgesUnlocked
+      },
+      activities: {
+        total: activitiesLogged
+      }
+    });
+  } catch (error) {
+    console.error('Erro:', error);
+    res.status(500).json({ error: 'Erro ao buscar estatísticas' });
+  }
+};

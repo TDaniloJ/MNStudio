@@ -22,4 +22,6 @@ router.post('/award', badgeController.awardBadge.bind(badgeController));
 // Remover badge do usuário (admin)
 router.delete('/', badgeController.removeBadge.bind(badgeController));
 
+
+
 module.exports = router;

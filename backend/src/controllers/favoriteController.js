@@ -25,6 +25,24 @@ exports.addFavorite = async (req, res) => {
       }
     });
 
+    await Notification.create({
+      user_id: req.userId,
+      type: 'favorite_added',
+      title: '❤️ Adicionado aos Favoritos',
+      message: `Você adicionou "${content_type === 'manga' ? manga.title : novel.title}" aos seus favoritos!`,
+      related_id: novelId || mangaId,
+      related_type: novelId ? 'novel' : 'manga',
+      action_url: novelId ? `/novels/${novelId}` : `/mangas/${mangaId}`
+    });
+
+    await Activity.create({
+      user_id: req.userId,
+      type: 'favorite_added',
+      description: `Adicionou "${content_type === 'manga' ? manga.title : novel.title}" aos favoritos`,
+      related_id: novelId || mangaId,
+      related_type: novelId ? 'novel' : 'manga'
+    });
+
     if (!created) {
       return res.status(400).json({ error: 'Já está nos favoritos' });
     }

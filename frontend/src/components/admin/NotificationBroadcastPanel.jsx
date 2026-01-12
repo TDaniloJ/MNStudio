@@ -14,6 +14,22 @@ const NotificationBroadcastPanel = () => {
   const [message, setMessage] = useState('');
   const [actionUrl, setActionUrl] = useState('');
 
+  const handleSendMaintenance = async () => {
+    try {
+      await notificationService.broadcastNotification({
+        user_ids: [1, 2, 3, 4, 5],  // Ou buscar todos os usuários
+        type: 'admin',
+        title: '🔧 Manutenção Programada',
+        message: 'O servidor estará em manutenção amanhã das 02:00 às 04:00. Por favor, salve seu trabalho.',
+        action_url: null
+      });
+
+      toast.success('Notificação enviada para todos os usuários');
+    } catch (error) {
+      toast.error('Erro ao enviar notificação');
+    }
+  };
+
   const handleSendNotification = async (e) => {
     e.preventDefault();
 
