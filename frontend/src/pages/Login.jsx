@@ -31,7 +31,7 @@ const Login = () => {
   const handleGoogleLogin = async (credential) => {
     try {
       setGoogleLoading(true);
-      // Enviar o token JWT do Google para o backend
+      // Enviar o token JWT do Google para o backend para autenticação
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       const response = await fetch(`${apiUrl}/auth/google`, {
         method: 'POST',
