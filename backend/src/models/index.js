@@ -44,6 +44,10 @@ db.Badge = require('./Badge')(sequelize, Sequelize);
 db.Activity = require('./Activity')(sequelize, Sequelize);
 db.UserBadge = require('./UserBadge')(sequelize, Sequelize);
 
+// ✅ ADICIONAR NOVOS MODELS DE HELP CENTER E HELP REQUESTS
+db.HelpCenter = require('./HelpCenter')(sequelize, Sequelize);
+db.HelpRequest = require('./HelpRequest')(sequelize, Sequelize);
+
 // Definir associações
 Object.keys(db).forEach(modelName => {
   if (db[modelName].associate) {

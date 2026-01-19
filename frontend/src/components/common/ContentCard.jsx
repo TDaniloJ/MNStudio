@@ -11,6 +11,9 @@ const ContentCard = ({ item, type = 'manga' }) => {
 
   const Icon = type === 'manga' ? BookOpen : FileText;
 
+  // Ultimo capitulos lancado modificado para mostrar apenas o numero do capitulo
+  const lastChapter = item.chapters[item.chapters.length - 1]?.number || '';
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'ongoing':
@@ -27,7 +30,7 @@ const ContentCard = ({ item, type = 'manga' }) => {
   const getStatusLabel = (status) => {
     switch (status) {
       case 'ongoing':
-        return 'Em andamento';
+        return 'Em Lançamento';
       case 'completed':
         return 'Completo';
       case 'hiatus':
@@ -39,9 +42,9 @@ const ContentCard = ({ item, type = 'manga' }) => {
 
   return (
     <Link to={linkTo}>
-      <Card hover className="group h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 transition-colors duration-200">
+      <Card hover className="group h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 transition-colors duration-200" style={{ width: '220px', height: '100%' }}>
         {/* Cover Image */}
-        <div className="relative aspect-[3/4] overflow-hidden bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600">
+        <div className="relative aspect-[2/3] overflow-hidden bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600">
           {!imageError && imageUrl ? (
             <img
               src={imageUrl}
@@ -125,7 +128,7 @@ const ContentCard = ({ item, type = 'manga' }) => {
                       const db = new Date(b.updated_at || b.created_at || 0).getTime();
                       return da > db ? a : b;
                     });
-                    return `Último: ${last.title || last.name || `Cap ${last.number || last.index || ''}`}`;
+                    return `Cap: ${lastChapter.number || last.index || ''}`;
                   })()
                 ) : (
                   `${item.chapters?.length || 0} capítulos`

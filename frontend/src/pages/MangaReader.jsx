@@ -373,7 +373,7 @@ const MangaReader = () => {
                 {chapter?.manga?.title || 'Carregando...'}
               </h2>
               <p className="text-sm text-gray-300">
-                Capítulo {chapter?.chapter_number || '1'}
+                Capítulo {parseFloat(chapter.chapter_number) || '1'}
                 {chapter?.title && ` - ${chapter.title}`}
               </p>
             </div>
@@ -410,8 +410,8 @@ const MangaReader = () => {
 
       {/* Settings Panel */}
       {showSettings && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 dark:bg-gray-900/50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[80vh] overflow-y-auto dark:bg-gray-800">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 dark:bg-gray-900/50 ">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[80vh] overflow-y-auto p-2 dark:bg-gray-800">
             <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white dark:bg-gray-800">
               <h3 className="text-xl font-semibold">Configurações de Leitura</h3>
               <button onClick={() => setShowSettings(false)}>
@@ -569,7 +569,7 @@ const MangaReader = () => {
       <div className="h-full flex items-center justify-center overflow-hidden">
         {/* ✅ VERIFIQUE pages EM VEZ DE chapter.pages */}
         {readingMode === 'single' && pages && pages.length > 0 && (
-          <div className="relative flex items-center justify-center w-full h-full p-4">
+          <div className="relative flex items-center justify-center w-full h-full p-4 overflow-y-auto mx-auto py-4">
             {currentPageData ? (
               <img
                 src={getImageUrl(currentPageData.image_url)}

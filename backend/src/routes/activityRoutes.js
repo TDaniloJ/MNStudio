@@ -15,4 +15,7 @@ router.delete('/:id', activityController.deleteActivity.bind(activityController)
 // Limpar histórico de atividades
 router.delete('/', activityController.clearActivities.bind(activityController));
 
+// Deletar todos os dados do usuário (GDPR compliant)
+router.delete('/account', activityController.deleteAccount.bind(activityController));
+
 module.exports = router;

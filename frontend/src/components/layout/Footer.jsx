@@ -53,36 +53,51 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Suporte */}
-          <div>
-            <h3 className="text-white dark:text-gray-200 font-semibold mb-4">Suporte</h3>
-            <ul className="space-y-2">
-              <li>
-                <a 
-                  href="/faq" 
-                  className="text-gray-400 dark:text-gray-500 hover:text-primary-400 dark:hover:text-primary-300 transition-colors"
-                >
-                  FAQ
-                </a>
-              </li>
-              <li>
-                <a 
-                  href="/contact" 
-                  className="text-gray-400 dark:text-gray-500 hover:text-primary-400 dark:hover:text-primary-300 transition-colors"
-                >
-                  Contato
-                </a>
-              </li>
-              <li>
-                <a 
-                  href="/terms" 
-                  className="text-gray-400 dark:text-gray-500 hover:text-primary-400 dark:hover:text-primary-300 transition-colors"
-                >
-                  Termos de Uso
-                </a>
-              </li>
-            </ul>
-          </div>
+        {/* Suporte */}
+        <div>
+          <h3 className="text-white dark:text-gray-200 font-semibold mb-4">
+            Suporte
+          </h3>
+
+          <ul className="space-y-2">
+            <li>
+              <Link
+                to="/support"
+                className="font-medium text-primary-400 hover:text-primary-300 transition-colors"
+              >
+                Central de Ajuda
+              </Link>
+            </li>
+
+            <li>
+              <Link
+                to="/faq"
+                className="text-gray-400 dark:text-gray-500 hover:text-primary-400 dark:hover:text-primary-300 transition-colors"
+              >
+                FAQ
+              </Link>
+            </li>
+
+            <li>
+              <Link
+                to="/contact"
+                className="text-gray-400 dark:text-gray-500 hover:text-primary-400 dark:hover:text-primary-300 transition-colors"
+              >
+                Contato
+              </Link>
+            </li>
+
+            <li>
+              <Link
+                to="/terms"
+                className="text-gray-400 dark:text-gray-500 hover:text-primary-400 dark:hover:text-primary-300 transition-colors"
+              >
+                Termos de Uso
+              </Link>
+            </li>
+          </ul>
+        </div>
+
         </div>
 
         <hr className="my-8 border-gray-800 dark:border-gray-900" />

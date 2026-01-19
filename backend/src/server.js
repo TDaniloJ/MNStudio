@@ -1,14 +1,18 @@
-// server.js - ORDEM CORRIGIDA
+// server.js — FINAL COM WEBSOCKET
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const http = require('http');
 require('dotenv').config();
 
 const { sequelize, testConnection } = require('./config/db');
 const errorHandler = require('./middlewares/errorHandler');
 const trackSession = require('./middlewares/sessionTracker');
 
-// Importar rotas
+// 🔹 SOCKET
+const initSocket = require('./socket');
+
+// 🔹 ROTAS
 const authRoutes = require('./routes/authRoutes');
 const mangaRoutes = require('./routes/mangaRoutes');
 const mangaChapterRoutes = require('./routes/mangaChapterRoutes');
@@ -28,25 +32,38 @@ const activityRoutes = require('./routes/activityRoutes');
 const badgeRoutes = require('./routes/badgeRoutes');
 const userStatsRoutes = require('./routes/userStatsRoutes');
 const coinRoutes = require('./routes/coinRoutes');
+const helpCenterRoutes = require('./routes/helpCenterRoutes');
+const helpRequestRoutes = require('./routes/helpRequestRoutes');
 
 const app = express();
+const server = http.createServer(app);
 
+// 🔹 SOCKET.IO INIT
+const io = initSocket(server);
+
+// 🔹 DISPONIBILIZAR IO NAS ROTAS
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
+// 🔹 CORS
 app.use(cors());
 
-// ✅ MIDDLEWARES GLOBAIS PRIMEIRO
+// 🔹 MIDDLEWARES GLOBAIS
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// SERVIR ARQUIVOS ESTÁTICOS
+// 🔹 ARQUIVOS ESTÁTICOS
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// ✅ ROTAS DE AUTH PRIMEIRO (sem trackSession ainda)
+// 🔹 AUTH PRIMEIRO
 app.use('/api/auth', authRoutes);
 
-// ✅✅✅ AGORA O TRACKSESSION (depois do auth mas antes das outras rotas) ✅✅✅
+// 🔹 TRACK SESSION (APÓS AUTH)
 app.use(trackSession);
 
-// ✅ DEMAIS ROTAS (já com trackSession)
+// 🔹 DEMAIS ROTAS
 app.use('/api/mangas', mangaRoutes);
 app.use('/api/mangas', mangaChapterRoutes);
 app.use('/api/novels', novelRoutes);
@@ -66,15 +83,19 @@ app.use('/api/badges', badgeRoutes);
 app.use('/api/users', userStatsRoutes);
 app.use('/api/coins', coinRoutes);
 
-// ROTA DE TESTE
+// 🔹 HELP CENTER & HELP REQUESTS
+app.use('/api/help-center', helpCenterRoutes);
+app.use('/api/help-requests', helpRequestRoutes);
+
+// 🔹 TESTE
 app.get('/', (req, res) => {
-  res.json({ message: 'API Manga & Novel Platform' });
+  res.json({ message: 'API Manga & Novel Platform 🚀' });
 });
 
-// MIDDLEWARE DE ERRO
+// 🔹 ERROR HANDLER
 app.use(errorHandler);
 
-// INICIALIZAR SERVIDOR
+// 🔹 START SERVER
 const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
@@ -83,10 +104,10 @@ const startServer = async () => {
 
     if (process.env.NODE_ENV === 'development') {
       await sequelize.sync({ alter: true });
-      console.log('✅ Modelos sincronizados com o banco de dados');
+      console.log('✅ Modelos sincronizados');
     }
 
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`🚀 Servidor rodando na porta ${PORT}`);
     });
   } catch (error) {

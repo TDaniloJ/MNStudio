@@ -161,7 +161,7 @@ const Home = () => {
           coverflowEffect={{
             rotate: 0,
             stretch: 0,
-            depth: 200,
+            depth: 100,
             modifier: 1,
             slideShadows: false
           }}
@@ -179,10 +179,10 @@ const Home = () => {
             prevEl: '.swiper-button-prev',
           }}
           className="hero-slider"
-          style={{ height: '420px' }}
+          style={{ height: '400px', paddingBottom: '40px', marginBottom: '30px' }}
         >
           {featured.map((item) => (
-            <SwiperSlide key={`${item.type}-${item.id}`} style={{ width: 320 }}>
+            <SwiperSlide key={`${item.type}-${item.id}`} style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '20px' }}>
               <FeaturedSlide item={item} />
             </SwiperSlide>
           ))}
@@ -193,7 +193,7 @@ const Home = () => {
 
         {/* Atualizações Recentes */}
         <section className="mb-16">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-6 ">
             <div>
               <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                 Atualizados Recentemente
@@ -202,7 +202,7 @@ const Home = () => {
                 Últimas obras que receberam novos capítulos
               </p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-3 gap-x-4">
               <Link to="/mangas">
                 <Button variant="outline" size="sm" className="dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">
                   Ver Mangás
@@ -216,7 +216,7 @@ const Home = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-5 sm:grid-cols-5 md:grid-cols-5 lg:grid-cols-5 gap-4">
             {recentUpdates.map((item) => (
               <ContentCard2 
                 key={`${item.type}-${item.id}`} 
@@ -248,7 +248,7 @@ const Home = () => {
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-5 sm:grid-cols-5 md:grid-cols-5 lg:grid-cols-5 gap-4">
             {recommended.map((item) => (
               <ContentCard2 
                 key={`rec-${item.type}-${item.id}`} 

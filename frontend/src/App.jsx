@@ -32,6 +32,7 @@ import FAQ from './pages/FAQ';
 import Contact from './pages/Contact';
 import Rankings from './pages/Rankings';
 import CoinsPage from './pages/CoinsPage';
+import Support from './pages/Support';
 
 // Admin Pages
 import Dashboard from './pages/admin/Dashboard';
@@ -51,6 +52,7 @@ import Notifications from './pages/admin/Notifications';
 import { useSettingsStore } from './store/settingsStore';
 
 import { CoinProvider } from './contexts/CoinContext';
+
 
 // Protected Route Component
 const ProtectedRoute = ({ children, adminOnly = false, uploaderOnly = false }) => {
@@ -133,6 +135,7 @@ function App() {
           <Route path="/contact" element={<Layout><Contact /></Layout>} />
           <Route path="/rankings" element={<Layout><Rankings /></Layout>} />
           <Route path="/coins" element={<ProtectedRoute><Layout><CoinsPage /></Layout></ProtectedRoute>}/>
+          <Route path="/support" element={<Layout><Support /></Layout>} />
 
           {/* Auth Routes without Layout */}
           <Route path="/login" element={<Login />} />

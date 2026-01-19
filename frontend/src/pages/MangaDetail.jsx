@@ -389,7 +389,7 @@ const MangaDetail = () => {
                           
                           <div>
                             <h3 className="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors dark:text-gray-200 dark:group-hover:text-primary-400">
-                              Capítulo {chapter.chapter_number}
+                              Capítulo {parseFloat(chapter.chapter_number).toFixed(0)}
                               {chapter.title && ` - ${chapter.title}`}
                             </h3>
                             <div className="flex items-center gap-3 text-sm text-gray-500 mt-1 dark:text-gray-400">
@@ -401,12 +401,6 @@ const MangaDetail = () => {
                                 <Eye className="w-3 h-3" />
                                 {formatNumber(chapter.views)}
                               </span>
-                              {chapter.pages && chapter.pages.length > 0 && (
-                                <span className="flex items-center gap-1 text-primary-600 dark:text-primary-400">
-                                  <ImageIcon className="w-3 h-3" />
-                                  {chapter.pages.length} págs
-                                </span>
-                              )}
                             </div>
                           </div>
                         </div>
@@ -422,27 +416,10 @@ const MangaDetail = () => {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Quick Stats */}
-            <Card className="p-6">
-              <h3 className="font-bold text-gray-900 mb-4 text-lg dark:text-white">Informações</h3>
+            <Card className="p-6 ">
+              <Clock className="w-6 h-6 text-primary-600" />
+              <h3 className="font-bold text-gray-900 mb-4 text-lg dark:text-white">  Detalhes</h3>
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
-                    <BookOpen className="w-4 h-4" />
-                    <span>Capítulos</span>
-                  </div>
-                  <span className="font-semibold text-gray-900 dark:text-gray-200">
-                    {sortedChapters.length}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
-                    <Eye className="w-4 h-4" />
-                    <span>Visualizações</span>
-                  </div>
-                  <span className="font-semibold text-gray-900 dark:text-gray-200">
-                    {formatNumber(currentManga.views)}
-                  </span>
-                </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                     <Star className="w-4 h-4" />
@@ -468,6 +445,24 @@ const MangaDetail = () => {
                     'text-yellow-600 dark:text-yellow-400'
                   }`}>
                     {getStatusText()}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                    <BookOpen className="w-4 h-4" />
+                    <span>Tipo</span>
+                  </div>
+                  <span className="font-semibold text-gray-900 dark:text-gray-200">
+                    {currentManga.type}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                    <CalendarDays className="w-4 h-4" />
+                    <span>Atualizado</span>
+                  </div>
+                  <span className="font-semibold text-gray-900 dark:text-gray-200">
+                    {formatDate(currentManga.created_at)}
                   </span>
                 </div>
               </div>

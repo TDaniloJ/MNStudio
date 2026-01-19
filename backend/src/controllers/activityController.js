@@ -87,6 +87,39 @@ class ActivityController {
       res.status(500).json({ error: 'Erro ao limpar atividades' });
     }
   }
+
+  // Deletar todos os dados do usuário (GDPR compliant)
+ async deleteAccount  (req, res) {
+  try {
+    const { userId } = req;
+
+    // 1. Deletar todas as notificações
+    await Notification.destroy({
+      where: { user_id: userId }
+    });
+
+    // 2. Deletar todas as atividades
+    await Activity.destroy({
+      where: { user_id: userId }
+    });
+
+    // 3. Deletar todas as badges
+    await UserBadge.destroy({
+      where: { user_id: userId }
+    });
+
+    // 4. Deletar usuário (se desejar)
+    await User.destroy({
+      where: { id: userId }
+    });
+
+    res.json({ message: 'Conta deletada com sucesso (GDPR compliant)' });
+  } catch (error) {
+    console.error('Erro:', error);
+    res.status(500).json({ error: 'Erro ao deletar conta' });
+  }
+}
+
 }
 
 module.exports = new ActivityController();

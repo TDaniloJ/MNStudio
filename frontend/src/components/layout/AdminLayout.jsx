@@ -23,17 +23,20 @@ import {
 import { Settings as SettingsIcon } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import ThemeToggle from '../common/ThemeToggle';
+import NotificationCenter from '../common/NotificationCenter';
+import HelpCenter from '../common/HelpeCenter';
 
 const AdminLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
+  const { isAuthenticated, user, logout } = useAuthStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  
 
   const menuItems = [
     { path: '/admin', icon: LayoutDashboard, label: 'Dashboard', exact: true },
@@ -123,7 +126,7 @@ const AdminLayout = () => {
             <Link to="/admin" className="flex items-center gap-2">
               <BookOpen className="w-6 h-6 text-primary-600" />
               <span className="text-lg font-bold text-gray-900 dark:text-white hidden sm:block">
-                MN Studio Admin
+                MN Studio
               </span>
             </Link>
           </div>
@@ -149,72 +152,10 @@ const AdminLayout = () => {
             <ThemeToggle showLabel={isSidebarOpen} />
 
             {/* Help */}
-            <button
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
-              title="Ajuda"
-            >
-              <HelpCircle className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-            </button>
+            <HelpCenter />
 
             {/* Notifications */}
-            <div className="relative">
-              <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition relative"
-                title="Notificações"
-              >
-                <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                )}
-              </button>
-
-              {/* Notifications Dropdown */}
-              {showNotifications && (
-                <>
-                  <div 
-                    className="fixed inset-0 z-10" 
-                    onClick={() => setShowNotifications(false)}
-                  />
-                  <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-20">
-                    <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-semibold text-gray-900 dark:text-white">
-                          Notificações
-                        </h3>
-                        {unreadCount > 0 && (
-                          <span className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-full">
-                            {unreadCount} novas
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="max-h-96 overflow-y-auto">
-                      {notifications.map((notif) => (
-                        <div
-                          key={notif.id}
-                          className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-700 ${
-                            notif.unread ? 'bg-blue-50 dark:bg-blue-900/20' : ''
-                          }`}
-                        >
-                          <p className="text-sm text-gray-900 dark:text-white font-medium">
-                            {notif.text}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            {notif.time}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="p-3 border-t border-gray-200 dark:border-gray-700">
-                      <button className="w-full text-center text-sm text-primary-600 hover:text-primary-700 font-medium">
-                        Ver todas as notificações
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
+            {isAuthenticated && <NotificationCenter />}
 
             {/* User Menu */}
             <div className="relative">
@@ -378,26 +319,6 @@ const AdminLayout = () => {
             })}
           </nav>
 
-          {/* Preferences */}
-          <div className="p-3 border-t dark:border-gray-700">
-            <ThemeToggle showLabel={isSidebarOpen} />
-          </div>
-
-          {/* Bottom */}
-          <div className="p-3 border-t dark:border-gray-700 space-y-2">
-            <Link to="/" className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
-              <Home size={18} />
-              {isSidebarOpen && 'Voltar ao site'}
-            </Link>
-
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-            >
-              <LogOut size={18} />
-              {isSidebarOpen && 'Sair'}
-            </button>
-          </div>
         </div>
       </aside>
 

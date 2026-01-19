@@ -141,7 +141,7 @@ const MangaChapterManager = () => {
       ) : (
         <div className="grid grid-cols-1 gap-4">
           {chapters
-            .sort((a, b) => parseFloat(a.chapter_number) - parseFloat(b.chapter_number))
+            .sort((a, b) => parseFloat(a.chapter_number) - parseFloat(b.chapter_number) || a.id - b.id)
             .map((chapter) => (
               <Card key={chapter.id} className="p-4 hover:shadow-lg transition">
                 <div className="flex items-center gap-4">
@@ -154,18 +154,18 @@ const MangaChapterManager = () => {
                           return (
                             <img
                               src={getImageUrl(chapter.pages[0].image_url)}
-                              alt={`Capítulo ${chapter.chapter_number}`}
+                              alt={`Capítulo ${parseFloat(chapter.chapter_number)}`}
                               className="w-full h-full object-cover"
                               onError={(e) => {
                                 e.target.style.display = 'none';
-                                e.target.parentElement.innerHTML = `<span class="text-2xl">${chapter.chapter_number}</span>`;
+                                e.target.parentElement.innerHTML = `<span class="text-2xl">${parseFloat(chapter.chapter_number)}</span>`;
                               }}
                             />
                           );
                         } else if (pagesCount > 0) {
                           return <span className="text-xs text-center">📄 {pagesCount}</span>;
                         } else {
-                          return <span className="text-2xl">{chapter.chapter_number}</span>;
+                          return <span className="text-2xl">{parseFloat(chapter.chapter_number)}</span>;
                         }
                       })()}
                     </div>
@@ -173,7 +173,7 @@ const MangaChapterManager = () => {
                   
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg text-gray-900 dark:text-white">
-                      Capítulo {chapter.chapter_number}
+                      Capítulo {parseFloat(chapter.chapter_number)}
                       {chapter.title && ` - ${chapter.title}`}
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -518,7 +518,7 @@ const UploadPagesModal = ({ chapter, onClose, onSuccess }) => {
     <Modal
       isOpen={true}
       onClose={onClose}
-      title={`Páginas do Capítulo ${chapter.chapter_number}`}
+      title={`Páginas do Capítulo ${parseFloat(chapter.chapter_number)}`}
       size="xl"
     >
       <div className="space-y-6">
@@ -604,7 +604,7 @@ const UploadPagesModal = ({ chapter, onClose, onSuccess }) => {
               accept="image/jpeg,image/png,image/webp,image/gif"
               multiple
               onChange={handleFilesChange}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 hover:file:cursor-pointer dark:file:bg-primary-900 dark:file:text-primary-200 dark:hover:file:bg-primary-800"
               disabled={loading}
             />
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
