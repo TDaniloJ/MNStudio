@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Send, Users, Mail } from 'lucide-react';
+import React, { useState } from 'react';
+import { Send, Mail } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { notificationService } from '../../services/userEnhancementService';
 import Card from '../common/Card';
@@ -8,27 +8,11 @@ import Input from '../common/Input';
 
 const NotificationBroadcastPanel = () => {
   const [loading, setLoading] = useState(false);
-  const [userIds, setUserIds] = useState('');
+
   const [notificationType, setNotificationType] = useState('system');
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [actionUrl, setActionUrl] = useState('');
-
-  const handleSendMaintenance = async () => {
-    try {
-      await notificationService.broadcastNotification({
-        user_ids: [1, 2, 3, 4, 5],  // Ou buscar todos os usuários
-        type: 'admin',
-        title: '🔧 Manutenção Programada',
-        message: 'O servidor estará em manutenção amanhã das 02:00 às 04:00. Por favor, salve seu trabalho.',
-        action_url: null
-      });
-
-      toast.success('Notificação enviada para todos os usuários');
-    } catch (error) {
-      toast.error('Erro ao enviar notificação');
-    }
-  };
 
   const handleSendNotification = async (e) => {
     e.preventDefault();
@@ -41,28 +25,16 @@ const NotificationBroadcastPanel = () => {
     try {
       setLoading(true);
 
-      const ids = userIds
-        .split(',')
-        .map(id => parseInt(id.trim()))
-        .filter(id => !isNaN(id));
-
-      if (ids.length === 0) {
-        toast.error('Insira pelo menos um ID de usuário');
-        return;
-      }
-
       await notificationService.broadcastNotification({
-        user_ids: ids,
+        send_to_all: true, // ✅ aqui
         type: notificationType,
         title: title.trim(),
         message: message.trim(),
         action_url: actionUrl.trim() || null
       });
 
-      toast.success(`Notificação enviada para ${ids.length} usuário(s)`);
-      
-      // Reset form
-      setUserIds('');
+      toast.success('Notificação enviada para TODOS os usuários');
+
       setTitle('');
       setMessage('');
       setActionUrl('');
@@ -82,30 +54,12 @@ const NotificationBroadcastPanel = () => {
           Enviar Notificação em Massa
         </h2>
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Envie notificações para múltiplos usuários simultaneamente
+          Envie notificações para todos os usuários simultaneamente
         </p>
       </div>
 
       <form onSubmit={handleSendNotification} className="space-y-6">
-        {/* IDs de Usuários */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            IDs de Usuários
-          </label>
-          <textarea
-            value={userIds}
-            onChange={(e) => setUserIds(e.target.value)}
-            placeholder="Insira os IDs separados por vírgula (ex: 1, 2, 3, 4)"
-            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
-            rows="3"
-            required
-          />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Separe múltiplos IDs com vírgulas
-          </p>
-        </div>
-
-        {/* Tipo de Notificação */}
+        {/* Tipo */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Tipo de Notificação
@@ -133,9 +87,6 @@ const NotificationBroadcastPanel = () => {
             maxLength={255}
             required
           />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {title.length}/255 caracteres
-          </p>
         </div>
 
         {/* Mensagem */}
@@ -152,12 +103,9 @@ const NotificationBroadcastPanel = () => {
             rows="5"
             required
           />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {message.length}/1000 caracteres
-          </p>
         </div>
 
-        {/* URL de Ação (Opcional) */}
+        {/* URL */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             URL de Ação (Opcional)
@@ -168,27 +116,7 @@ const NotificationBroadcastPanel = () => {
             placeholder="/mangas/123 ou /novels/456"
             type="text"
           />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            URL para redirecionar ao clicar na notificação (deixe em branco para desabilitar)
-          </p>
         </div>
-
-        {/* Preview */}
-        {title || message ? (
-          <div className="p-4 bg-primary-50 dark:bg-primary-900/10 border border-primary-200 dark:border-primary-800 rounded-lg">
-            <p className="text-xs font-medium text-primary-800 dark:text-primary-300 mb-2">
-              Preview da Notificação
-            </p>
-            <div className="p-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
-              <p className="font-medium text-gray-900 dark:text-white text-sm">
-                {title || '(Sem título)'}
-              </p>
-              <p className="text-gray-600 dark:text-gray-400 text-sm mt-1 line-clamp-2">
-                {message || '(Sem mensagem)'}
-              </p>
-            </div>
-          </div>
-        ) : null}
 
         {/* Botões */}
         <div className="flex gap-3 pt-4 border-t">
@@ -196,23 +124,18 @@ const NotificationBroadcastPanel = () => {
             type="reset"
             variant="secondary"
             onClick={() => {
-              setUserIds('');
               setTitle('');
               setMessage('');
               setActionUrl('');
               setNotificationType('system');
             }}
           >
-            Limpar Formulário
+            Limpar
           </Button>
-          <Button
-            type="submit"
-            loading={loading}
-            disabled={!userIds.trim() || !title.trim() || !message.trim()}
-            className="flex items-center gap-2"
-          >
+
+          <Button type="submit" loading={loading} className="flex items-center gap-2">
             <Send className="w-4 h-4" />
-            Enviar Notificação
+            Enviar para Todos
           </Button>
         </div>
       </form>

@@ -1,155 +1,162 @@
-const { Badge, UserBadge, User } = require('../models');
+const { Badge, UserBadge, User, Notification, Activity } = require('../models');
+const catchAsync = require('../utils/catchAsync');
+const AppError = require('../utils/AppError');
+const logger = require('../utils/logger');
 
 class BadgeController {
-  // Obter todas as badges
-  async getAllBadges(req, res) {
-    try {
-      const badges = await Badge.findAll({
-        order: [['rarity', 'DESC']]
-      });
+  getAllBadges = catchAsync(async (req, res, next) => {
+    const badges = await Badge.findAll({
+      order: [['rarity', 'DESC']]
+    });
 
-      res.json({ badges });
-    } catch (error) {
-      console.error('Erro ao buscar badges:', error);
-      res.status(500).json({ error: 'Erro ao buscar badges' });
+    logger.debug('Badges recuperadas', { count: badges.length });
+
+    res.json({ badges });
+  });
+
+  getUserBadges = catchAsync(async (req, res, next) => {
+    const { user_id } = req.params;
+
+    const user = await User.findByPk(user_id, {
+      include: {
+        association: 'badges',
+        attributes: ['id', 'name', 'description', 'icon_url', 'rarity'],
+        through: { attributes: [] }
+      }
+    });
+
+    if (!user) {
+      throw new AppError('Usuário não encontrado', 404, 'NOT_FOUND', { resource: 'user', id: user_id });
     }
-  }
 
-  // Obter badges do usuário com status de desbloqueio
-  async getUserBadges(req, res) {
-    try {
-      const { user_id } = req.params;
+    const allBadges = await Badge.findAll();
 
-      const user = await User.findByPk(user_id, {
-        include: {
-          association: 'badges',
-          attributes: ['id', 'name', 'description', 'icon_url', 'rarity'],
-          through: { attributes: [] }
-        }
-      });
+    const badgesWithStatus = allBadges.map(badge => ({
+      ...badge.toJSON(),
+      unlocked: user.badges.some(ub => ub.id === badge.id),
+      unlockedAt: user.badges.find(ub => ub.id === badge.id)?.UserBadge?.created_at
+    }));
 
-      if (!user) {
-        return res.status(404).json({ error: 'Usuário não encontrado' });
-      }
+    logger.debug('Badges do usuário recuperadas', {
+      userId: user_id,
+      totalBadges: allBadges.length,
+      unlockedCount: user.badges.length
+    });
 
-      const allBadges = await Badge.findAll();
+    res.json({
+      badges: badgesWithStatus,
+      unlockedCount: user.badges.length
+    });
+  });
 
-      const badgesWithStatus = allBadges.map(badge => ({
-        ...badge.toJSON(),
-        unlocked: user.badges.some(ub => ub.id === badge.id),
-        unlockedAt: user.badges.find(ub => ub.id === badge.id)?.UserBadge?.created_at
-      }));
+  awardBadge = catchAsync(async (req, res, next) => {
+    const { user_id, badge_id } = req.body;
 
-      res.json({
-        badges: badgesWithStatus,
-        unlockedCount: user.badges.length
-      });
-    } catch (error) {
-      console.error('Erro ao buscar badges do usuário:', error);
-      res.status(500).json({ error: 'Erro ao buscar badges do usuário' });
+    if (!user_id || !badge_id) {
+      throw new AppError('user_id e badge_id são obrigatórios', 400, 'MISSING_FIELDS');
     }
-  }
 
-  // Desbloquear badge para um usuário (admin)
-  async awardBadge(req, res) {
-    try {
-      const { user } = req;
+    const [userExists, badgeExists] = await Promise.all([
+      User.findByPk(user_id),
+      Badge.findByPk(badge_id)
+    ]);
 
-      if (user.role !== 'admin') {
-        return res.status(403).json({ error: 'Você não tem permissão para desbloquear badges' });
-      }
-
-      const { user_id, badge_id } = req.body;
-
-      const userExists = await User.findByPk(user_id);
-      if (!userExists) {
-        return res.status(404).json({ error: 'Usuário não encontrado' });
-      }
-
-      const badgeExists = await Badge.findByPk(badge_id);
-      if (!badgeExists) {
-        return res.status(404).json({ error: 'Badge não encontrada' });
-      }
-
-      const [userBadge, created] = await UserBadge.findOrCreate({
-        where: { user_id, badge_id }
-      });
-
-      if (!created) {
-        return res.status(400).json({ error: 'Usuário já possui esta badge' });
-      }
-
-      res.status(201).json({
-        message: 'Badge desbloqueada com sucesso',
-        userBadge
-      });
-    } catch (error) {
-      console.error('Erro ao desbloquear badge:', error);
-      res.status(500).json({ error: 'Erro ao desbloquear badge' });
+    if (!userExists) {
+      throw new AppError('Usuário não encontrado', 404, 'NOT_FOUND', { resource: 'user', id: user_id });
     }
-  }
 
-  // Criar badge (admin)
-  async createBadge(req, res) {
-    try {
-      const { user } = req;
-
-      if (user.role !== 'admin') {
-        return res.status(403).json({ error: 'Você não tem permissão para criar badges' });
-      }
-
-      const { name, description, icon_url, condition_type, condition_value, rarity } = req.body;
-
-      if (!name || !condition_type) {
-        return res.status(400).json({ error: 'Nome e tipo de condição são obrigatórios' });
-      }
-
-      const badge = await Badge.create({
-        name,
-        description,
-        icon_url,
-        condition_type,
-        condition_value,
-        rarity: rarity || 'common'
-      });
-
-      res.status(201).json(badge);
-    } catch (error) {
-      console.error('Erro ao criar badge:', error);
-      res.status(500).json({ error: 'Erro ao criar badge' });
+    if (!badgeExists) {
+      throw new AppError('Badge não encontrada', 404, 'NOT_FOUND', { resource: 'badge', id: badge_id });
     }
-  }
 
-  // Remover badge do usuário
-  async removeBadge(req, res) {
-    try {
-      const { user } = req;
+    const [userBadge, created] = await UserBadge.findOrCreate({
+      where: { user_id, badge_id }
+    });
 
-      if (user.role !== 'admin') {
-        return res.status(403).json({ error: 'Você não tem permissão para remover badges' });
-      }
-
-      const { user_id, badge_id } = req.body;
-
-      const deleted = await UserBadge.destroy({
-        where: { user_id, badge_id }
+    if (!created) {
+      throw new AppError('Usuário já possui esta badge', 409, 'ALREADY_UNLOCKED', {
+        user_id,
+        badge_id
       });
-
-      if (deleted === 0) {
-        return res.status(404).json({ error: 'Relação badge-usuário não encontrada' });
-      }
-
-      res.json({ message: 'Badge removida com sucesso' });
-    } catch (error) {
-      console.error('Erro ao remover badge:', error);
-      res.status(500).json({ error: 'Erro ao remover badge' });
     }
-  }
+
+    logger.info('Badge desbloqueada por admin', {
+      adminId: req.user.id,
+      userId: user_id,
+      badgeId: badge_id,
+      badgeName: badgeExists.name
+    });
+
+    res.status(201).json({
+      message: 'Badge desbloqueada com sucesso',
+      userBadge
+    });
+  });
+
+  createBadge = catchAsync(async (req, res, next) => {
+    const { name, description, icon_url, condition_type, condition_value, rarity } = req.body;
+
+    if (!name || !condition_type) {
+      throw new AppError('Nome e tipo de condição são obrigatórios', 400, 'MISSING_FIELDS', {
+        required: ['name', 'condition_type']
+      });
+    }
+
+    const badge = await Badge.create({
+      name,
+      description,
+      icon_url,
+      condition_type,
+      condition_value,
+      rarity: rarity || 'common'
+    });
+
+    logger.info('Badge criada', {
+      adminId: req.user.id,
+      badgeId: badge.id,
+      badgeName: name,
+      conditionType: condition_type
+    });
+
+    res.status(201).json(badge);
+  });
+
+  removeBadge = catchAsync(async (req, res, next) => {
+    const { user_id, badge_id } = req.body;
+
+    if (!user_id || !badge_id) {
+      throw new AppError('user_id e badge_id são obrigatórios', 400, 'MISSING_FIELDS');
+    }
+
+    const deleted = await UserBadge.destroy({
+      where: { user_id, badge_id }
+    });
+
+    if (deleted === 0) {
+      throw new AppError('Relação badge-usuário não encontrada', 404, 'NOT_FOUND', {
+        user_id,
+        badge_id
+      });
+    }
+
+    logger.info('Badge removida de usuário', {
+      adminId: req.user.id,
+      userId: user_id,
+      badgeId: badge_id
+    });
+
+    res.json({ message: 'Badge removida com sucesso' });
+  });
 }
 
-async function checkAndUnlockBadges(userId) {
+const checkAndUnlockBadges = catchAsync(async (userId) => {
   const user = await User.findByPk(userId);
-  
+  if (!user) {
+    throw new AppError('Usuário não encontrado', 404, 'NOT_FOUND', { resource: 'user', id: userId });
+  }
+
+  const { Favorite } = require('../models');
+
   // 1. Contar favoritos
   const favoriteCount = await Favorite.count({
     where: { user_id: userId }
@@ -167,7 +174,7 @@ async function checkAndUnlockBadges(userId) {
       });
 
       if (created) {
-        // 📢 NOTIFICAR USUÁRIO
+        // 📢 Notificar usuário
         await Notification.create({
           user_id: userId,
           type: 'system',
@@ -178,7 +185,7 @@ async function checkAndUnlockBadges(userId) {
           action_url: '/profile?tab=achievements'
         });
 
-        // 📊 REGISTRAR ATIVIDADE
+        // 📊 Registrar atividade
         await Activity.create({
           user_id: userId,
           type: 'badge_earned',
@@ -187,10 +194,17 @@ async function checkAndUnlockBadges(userId) {
           related_type: 'badge'
         });
 
-        console.log(`✅ Badge "${collectorBadge.name}" desbloqueada para usuário ${userId}`);
+        logger.info('Badge desbloqueada automaticamente', {
+          userId,
+          badgeId: collectorBadge.id,
+          badgeName: collectorBadge.name,
+          trigger: 'favorite_count',
+          favoriteCount
+        });
       }
     }
   }
-}
+});
 
 module.exports = new BadgeController();
+module.exports.checkAndUnlockBadges = checkAndUnlockBadges;

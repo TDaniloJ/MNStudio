@@ -2,19 +2,22 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { 
   User, 
-  Session, // ✅ ADICIONAR Session
-  Favorite, // ✅ ADICIONAR Favorite
-  ReadingHistory, // ✅ ADICIONAR ReadingHistory
-  Manga, // ✅ ADICIONAR Manga
-  Novel, // ✅ ADICIONAR Novel
-  MangaChapter, // ✅ ADICIONAR MangaChapter
-  NovelChapter // ✅ ADICIONAR NovelChapter
+  Session,
+  Favorite,
+  ReadingHistory,
+  Manga,
+  Novel,
+  MangaChapter,
+  NovelChapter
 } = require('../models');
 const { validationResult } = require('express-validator');
 const { Op } = require('sequelize');
-const speakeasy = require('speakeasy'); // Para 2FA
-const QRCode = require('qrcode'); // Para QR Code do 2FA
-const emailService = require('../services/emailService'); // Serviço de email
+const speakeasy = require('speakeasy');
+const QRCode = require('qrcode');
+const emailService = require('../services/emailService');
+const catchAsync = require('../utils/catchAsync');
+const AppError = require('../utils/AppError');
+const logger = require('../utils/logger');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -22,178 +25,181 @@ const generateToken = (id) => {
   });
 };
 
-exports.register = async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        error: 'Dados de registro inválidos',
-        details: errors.array().map(err => err.msg)
-      });
-    }
-
-    const { username, email, password } = req.body;
-
-    // Verificar se usuário já existe
-    const userExists = await User.findOne({ where: { email } });
-    if (userExists) {
-      return res.status(400).json({ error: 'Email já cadastrado' });
-    }
-
-    const usernameExists = await User.findOne({ where: { username } });
-    if (usernameExists) {
-      return res.status(400).json({ error: 'Nome de usuário já cadastrado' });
-    }
-
-    // Hash da senha
-    const salt = await bcrypt.genSalt(10);
-    const password_hash = await bcrypt.hash(password, salt);
-
-    // Criar usuário
-    const user = await User.create({
-      username,
-      email,
-      password_hash,
-      role: 'reader'
-    });
-
-    const token = generateToken(user.id);
-
-    res.status(201).json({
-      message: 'Usuário criado com sucesso',
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        created_at: user.created_at
-      },
-      token
-    });
-  } catch (error) {
-    console.error('Erro no registro:', error);
-    res.status(500).json({ error: 'Erro ao criar usuário' });
+/**
+ * Valida erros de validação do express-validator
+ */
+const validateRequest = (req) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    const details = errors.array().map(err => ({
+      field: err.param,
+      message: err.msg
+    }));
+    throw new AppError('Dados inválidos', 400, 'VALIDATION_ERROR', details);
   }
 };
 
-exports.login = async (req, res) => {
-  try {
-    console.log('🔍 BODY RECEBIDO NO LOGIN:', req.body);
-    console.log('🔍 HEADERS:', req.headers['content-type']);
+exports.register = catchAsync(async (req, res, next) => {
+  validateRequest(req);
+  const { username, email, password } = req.body;
 
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      console.log('❌ ERROS DE VALIDAÇÃO:', errors.array());
-      return res.status(400).json({ 
-        error: 'Dados de login inválidos',
-        details: errors.array().map(err => err.msg)
-      });
-    }
+  // Verificar duplicatas
+  const [userByEmail, userByUsername] = await Promise.all([
+    User.findOne({ where: { email } }),
+    User.findOne({ where: { username } })
+  ]);
 
-    const { email, password } = req.body;
-
-    // Buscar usuário
-    const user = await User.findOne({ where: { email } });
-    if (!user) {
-      return res.status(401).json({ error: 'Credenciais inválidas' });
-    }
-
-    // Verificar senha
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch) {
-      return res.status(401).json({ error: 'Credenciais inválidas' });
-    }
-
-    const token = generateToken(user.id);
-
-    res.json({
-      message: 'Login realizado com sucesso',
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        avatar_url: user.avatar_url,
-        google_sub: user.google_sub,
-        created_at: user.created_at
-      },
-      token
-    });
-  } catch (error) {
-    console.error('❌ ERRO NO LOGIN:', error);
-    res.status(500).json({ error: 'Erro ao fazer login' });
+  if (userByEmail) {
+    throw new AppError('Email já cadastrado', 409, 'DUPLICATE_EMAIL', { field: 'email' });
   }
-};
 
-exports.getMe = async (req, res) => {
-  try {
-    const user = await User.findByPk(req.userId, {
-      attributes: { 
-        exclude: ['password_hash'],
-        include: ['created_at'] // ✅ Garantir que created_at seja incluído
-      }
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'Usuário não encontrado' });
-    }
-
-    res.json({ 
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        avatar_url: user.avatar_url,
-        created_at: user.created_at, // ✅ Incluir created_at
-        email_verified_at: user.email_verified_at,
-        google_sub: user.google_sub,
-        two_factor_enabled: user.two_factor_enabled,
-        preferences: user.preferences,
-        bio: user.bio
-      }
-    });
-  } catch (error) {
-    console.error('Erro ao buscar usuário:', error);
-    res.status(500).json({ error: 'Erro ao buscar dados do usuário' });
+  if (userByUsername) {
+    throw new AppError('Nome de usuário já cadastrado', 409, 'DUPLICATE_USERNAME', { field: 'username' });
   }
-};
 
-exports.updateProfile = async (req, res) => {
-  try {
-    const { username, email, bio } = req.body;
-    console.log('req.userId:', req.userId);
-    console.log('req.user:', req.user);
-    const user = await User.findByPk(req.userId);
+  // Hash da senha
+  const salt = await bcrypt.genSalt(10);
+  const password_hash = await bcrypt.hash(password, salt);
 
-    if (username) user.username = username;
-    if (email) user.email = email;
-    if (bio !== undefined) user.bio = bio;
+  // Criar usuário
+  const user = await User.create({
+    username,
+    email,
+    password_hash,
+    role: 'reader'
+  });
 
-    if (req.file) {
-      user.avatar_url = `/uploads/avatars/${req.file.filename}`;
-    }
+  const token = generateToken(user.id);
 
-    await user.save();
+  logger.info('Usuário registrado com sucesso', {
+    userId: user.id,
+    email: user.email,
+    username: user.username
+  });
 
-    res.json({
-      message: 'Perfil atualizado com sucesso',
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        avatar_url: user.avatar_url,
-        banner_url: user.banner_url,
-        bio: user.bio,
-        google_sub: user.google_sub
-      }
-    });
-  } catch (error) {
-    console.error('Erro ao atualizar perfil:', error);
-    res.status(500).json({ error: 'Erro ao atualizar perfil' });
+  res.status(201).json({
+    message: 'Usuário criado com sucesso',
+    user: {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      created_at: user.created_at
+    },
+    token
+  });
+});
+
+exports.login = catchAsync(async (req, res, next) => {
+  validateRequest(req);
+  const { email, password } = req.body;
+
+  // Buscar usuário
+  const user = await User.findOne({ where: { email } });
+  if (!user) {
+    throw new AppError('Credenciais inválidas', 401, 'INVALID_CREDENTIALS');
   }
-};
+
+  // Verificar senha
+  const isMatch = await bcrypt.compare(password, user.password_hash);
+  if (!isMatch) {
+    throw new AppError('Credenciais inválidas', 401, 'INVALID_CREDENTIALS');
+  }
+
+  const token = generateToken(user.id);
+
+  logger.info('Login realizado com sucesso', {
+    userId: user.id,
+    email: user.email
+  });
+
+  res.json({
+    message: 'Login realizado com sucesso',
+    user: {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      avatar_url: user.avatar_url,
+      google_sub: user.google_sub,
+      created_at: user.created_at
+    },
+    token
+  });
+});
+
+exports.getMe = catchAsync(async (req, res, next) => {
+  const user = await User.findByPk(req.userId, {
+    attributes: { exclude: ['password_hash'] }
+  });
+
+  if (!user) {
+    throw new AppError('Usuário não encontrado', 404, 'NOT_FOUND');
+  }
+
+  res.json({ 
+    user: {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      avatar_url: user.avatar_url,
+      banner_url: user.banner_url,
+      bio: user.bio,
+      created_at: user.created_at,
+      email_verified_at: user.email_verified_at,
+      google_sub: user.google_sub,
+      two_factor_enabled: user.two_factor_enabled,
+      preferences: user.preferences
+    }
+  });
+});
+
+exports.updateProfile = catchAsync(async (req, res, next) => {
+  const { username, email, bio } = req.body;
+  
+  const user = await User.findByPk(req.userId);
+  if (!user) {
+    throw new AppError('Usuário não encontrado', 404, 'NOT_FOUND');
+  }
+
+  // Verificar duplicatas se email foi alterado
+  if (email && email !== user.email) {
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      throw new AppError('Email já cadastrado', 409, 'DUPLICATE_EMAIL', { field: 'email' });
+    }
+    user.email = email;
+  }
+
+  if (username) user.username = username;
+  if (bio !== undefined) user.bio = bio;
+
+  if (req.file) {
+    user.avatar_url = `/uploads/avatars/${req.file.filename}`;
+  }
+
+  await user.save();
+
+  logger.info('Perfil atualizado', {
+    userId: user.id,
+    fields: ['username', 'email', 'bio', req.file ? 'avatar' : null].filter(Boolean)
+  });
+
+  res.json({
+    message: 'Perfil atualizado com sucesso',
+    user: {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      avatar_url: user.avatar_url,
+      banner_url: user.banner_url,
+      bio: user.bio,
+      google_sub: user.google_sub
+    }
+  });
+});
 
 exports.changePassword = async (req, res) => {
   try {
@@ -833,6 +839,11 @@ exports.verifyEmail = async (req, res) => {
 // Atualizar banner do usuário
 exports.updateBanner = async (req, res) => {
   try {
+    console.log('🎯 updateBanner - req.userId:', req.userId);
+    console.log('🎯 updateBanner - req.file:', req.file);
+    console.log('🎯 updateBanner - req.body:', req.body);
+    console.log('🎯 updateBanner - req.headers:', req.headers);
+
     const user = await User.findByPk(req.userId);
 
     if (!user) {
@@ -849,6 +860,7 @@ exports.updateBanner = async (req, res) => {
       });
     }
 
+    console.error('🚫 updateBanner - Nenhum arquivo recebido');
     res.status(400).json({ error: 'Nenhuma imagem fornecida' });
   } catch (error) {
     console.error('Erro ao atualizar banner:', error);

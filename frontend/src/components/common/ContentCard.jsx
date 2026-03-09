@@ -65,12 +65,15 @@ const ContentCard = ({ item, type = 'manga' }) => {
                 <Eye className="w-3 h-3" />
                 <span>{formatNumber(item.views || 0)} visualizações</span>
               </div>
-              {item.rating > 0 && (
-                <div className="flex items-center gap-1 text-yellow-400 text-xs">
-                  <Star className="w-3 h-3 fill-current" />
-                  <span>{item.rating.toFixed(1)}</span>
-                </div>
-              )}
+              {(() => {
+                const ratingValue = Number(item.rating) || 0;
+                return ratingValue > 0 ? (
+                  <div className="flex items-center gap-1 text-yellow-400 text-xs">
+                    <Star className="w-3 h-3 fill-current" />
+                    <span>{ratingValue.toFixed(1)}</span>
+                  </div>
+                ) : null;
+              })()}
             </div>
           </div>
 

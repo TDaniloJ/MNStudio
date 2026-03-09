@@ -9,6 +9,13 @@ router.use(auth);
 // Listar atividades do usuário
 router.get('/', activityController.getActivities.bind(activityController));
 
+// Obter atividade por id
+router.get('/:id', activityController.getActivity.bind(activityController));
+
+// Atualizar atividade
+router.put('/:id', activityController.updateActivity.bind(activityController));
+
+// Deletar atividade
 // Deletar atividade
 router.delete('/:id', activityController.deleteActivity.bind(activityController));
 

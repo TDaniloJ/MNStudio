@@ -42,6 +42,7 @@ const seedSettings = require('./src/utils/seedSettings');
 const Coin = require('./src/models/Coin')(sequelize, DataTypes);
 const CoinPackage = require('./src/models/CoinPackage')(sequelize, DataTypes);
 const CoinTransaction = require('./src/models/CoinTransaction')(sequelize, DataTypes);
+const Rating = require('./src/models/Rating')(sequelize, DataTypes);
 
 
 // Objeto com todos os models
@@ -160,6 +161,9 @@ const syncDatabase = async () => {
 
     await UserBadge.sync({ alter: true });
     console.log('✅ Tabela user_badges criada');
+
+      await Rating.sync({ alter: true });
+      console.log('✅ Tabela ratings criada');
 
     // ===== SISTEMA DE MOEDAS =====
 

@@ -22,20 +22,22 @@ export const authService = {
   },
 
   async updateProfile(data) {
-    const formData = new FormData();
-    Object.keys(data).forEach(key => {
-      if (data[key]) formData.append(key, data[key]);
-    });
-    const response = await api.put('/auth/profile', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
+    // Aceita tanto um objeto simples quanto um FormData já construído
+    let payload = data;
+    if (!(data instanceof FormData)) {
+      payload = new FormData();
+      Object.keys(data).forEach(key => {
+        if (data[key] !== undefined && data[key] !== null) payload.append(key, data[key]);
+      });
+    }
+    // Não setar Content-Type manualmente para permitir que o axios inclua boundary
+    const response = await api.put('/auth/profile', payload);
     return response.data;
   },
 
   async updateBanner(data) {
-    const response = await api.put('/auth/banner', data, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
+    // data deve ser um FormData contendo o campo 'banner'
+    const response = await api.put('/auth/banner', data);
     return response.data;
   },
 
@@ -136,7 +138,15 @@ export const authService = {
   },
 
   getUser() {
-    const user = localStorage.getItem('user');
-    return user ? JSON.parse(user) : null;
+    const raw = localStorage.getItem('user');
+    if (!raw) return null;
+    try {
+      // Protege contra valores não JSON (ex: "undefined")
+      return JSON.parse(raw);
+    } catch (err) {
+      console.warn('authService.getUser: valor inválido em localStorage `user`, removendo.', raw);
+      localStorage.removeItem('user');
+      return null;
+    }
   }
 };

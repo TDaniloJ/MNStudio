@@ -1,8 +1,11 @@
 import React from 'react';
 import { BookOpen, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAppInfo } from '../../hooks/useFeatures';
 
 const Footer = () => {
+  const appInfo = useAppInfo();
+
   return (
     <footer className="bg-gray-900 dark:bg-black text-gray-300 mt-auto transition-colors duration-200">
       <div className="container-custom py-12">
@@ -11,7 +14,7 @@ const Footer = () => {
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center gap-2 mb-4">
               <BookOpen className="w-8 h-8 text-primary-400" />
-              <span className="text-xl font-bold text-white">MN Studio</span>
+              <span className="text-xl font-bold text-white">{appInfo.appName}</span>
             </div>
             <p className="text-gray-400 dark:text-gray-500 mb-4">
               A melhor plataforma para ler mangás e novels online. 
@@ -88,12 +91,30 @@ const Footer = () => {
             </li>
 
             <li>
-              <Link
-                to="/terms"
+              <a
+                href={appInfo.termsUrl}
                 className="text-gray-400 dark:text-gray-500 hover:text-primary-400 dark:hover:text-primary-300 transition-colors"
               >
                 Termos de Uso
-              </Link>
+              </a>
+            </li>
+
+            <li>
+              <a
+                href={appInfo.privacyUrl}
+                className="text-gray-400 dark:text-gray-500 hover:text-primary-400 dark:hover:text-primary-300 transition-colors"
+              >
+                Privacidade
+              </a>
+            </li>
+
+            <li>
+              <a
+                href={`mailto:${appInfo.contactEmail}`}
+                className="text-gray-400 dark:text-gray-500 hover:text-primary-400 dark:hover:text-primary-300 transition-colors"
+              >
+                Email
+              </a>
             </li>
           </ul>
         </div>
@@ -103,7 +124,7 @@ const Footer = () => {
         <hr className="my-8 border-gray-800 dark:border-gray-900" />
 
         <div className="text-center text-sm text-gray-500 dark:text-gray-600">
-          © {new Date().getFullYear()} MN Studio. Todos os direitos reservados.
+          © {new Date().getFullYear()} {appInfo.appName} v{appInfo.appVersion}. Todos os direitos reservados.
         </div>
       </div>
     </footer>

@@ -21,3 +21,11 @@ export const activityService = {
         return response.data;
     }
 };
+
+// Compatibilidade: obter atividades do usuário logado (usado por Profile.jsx)
+activityService.getMyActivity = async function(limit = 10) {
+    const response = await api.get('/activities', { params: { limit } });
+    // Retornar array direto quando o controller responde { activities, total }
+    if (response.data.activities) return response.data.activities;
+    return response.data;
+};

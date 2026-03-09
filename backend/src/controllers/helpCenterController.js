@@ -1,82 +1,86 @@
 const { HelpCenter } = require('../models');
+const catchAsync = require('../utils/catchAsync');
+const AppError = require('../utils/AppError');
+const logger = require('../utils/logger');
 
 module.exports = {
-  async getAllHelpEntries(req, res) {
-    try {
-      const helpEntries = await HelpCenter.findAll({
-        order: [['createdAt', 'DESC']]
-      });
-      res.json({ helpEntries });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: 'Erro ao buscar Help Center' });
+  getAllHelpEntries: catchAsync(async (req, res, next) => {
+    const helpEntries = await HelpCenter.findAll({
+      order: [['createdAt', 'DESC']]
+    });
+
+    logger.debug('Entradas de Help Center recuperadas', { count: helpEntries.length });
+
+    res.json({ helpEntries });
+  }),
+
+  getHelpEntryById: catchAsync(async (req, res, next) => {
+    const { id } = req.params;
+    const helpEntry = await HelpCenter.findByPk(id);
+
+    if (!helpEntry) {
+      throw new AppError('Entrada não encontrada', 404, 'NOT_FOUND', { resource: 'helpEntry', id });
     }
-  },
 
-  async getHelpEntryById(req, res) {
-    try {
-      const { id } = req.params;
-      const helpEntry = await HelpCenter.findByPk(id);
+    logger.debug('Entrada de Help Center recuperada', { id });
 
-      if (!helpEntry) {
-        return res.status(404).json({ error: 'Entrada não encontrada' });
-      }
+    res.json({ helpEntry });
+  }),
 
-      res.json({ helpEntry });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: 'Erro ao buscar entrada' });
+  createHelpEntry: catchAsync(async (req, res, next) => {
+    const { question, answer } = req.body;
+
+    if (!question || !answer) {
+      throw new AppError('Pergunta e resposta são obrigatórias', 400, 'MISSING_FIELDS');
     }
-  },
 
-  async createHelpEntry(req, res) {
-    try {
-      const { question, answer } = req.body;
+    const helpEntry = await HelpCenter.create({
+      question,
+      answer
+    });
 
-      const helpEntry = await HelpCenter.create({
-        question,
-        answer
-      });
+    logger.info('Entrada de Help Center criada', {
+      adminId: req.user.id,
+      entryId: helpEntry.id
+    });
 
-      res.status(201).json({ helpEntry });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: 'Erro ao criar entrada' });
+    res.status(201).json({ helpEntry });
+  }),
+
+  updateHelpEntry: catchAsync(async (req, res, next) => {
+    const { id } = req.params;
+    const { question, answer } = req.body;
+
+    const helpEntry = await HelpCenter.findByPk(id);
+    if (!helpEntry) {
+      throw new AppError('Entrada não encontrada', 404, 'NOT_FOUND', { resource: 'helpEntry', id });
     }
-  },
 
-  async updateHelpEntry(req, res) {
-    try {
-      const { id } = req.params;
-      const { question, answer } = req.body;
+    await helpEntry.update({ question, answer });
 
-      const helpEntry = await HelpCenter.findByPk(id);
-      if (!helpEntry) {
-        return res.status(404).json({ error: 'Entrada não encontrada' });
-      }
+    logger.info('Entrada de Help Center atualizada', {
+      adminId: req.user.id,
+      entryId: id
+    });
 
-      await helpEntry.update({ question, answer });
-      res.json({ helpEntry });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: 'Erro ao atualizar entrada' });
+    res.json({ helpEntry });
+  }),
+
+  deleteHelpEntry: catchAsync(async (req, res, next) => {
+    const { id } = req.params;
+
+    const helpEntry = await HelpCenter.findByPk(id);
+    if (!helpEntry) {
+      throw new AppError('Entrada não encontrada', 404, 'NOT_FOUND', { resource: 'helpEntry', id });
     }
-  },
 
-  async deleteHelpEntry(req, res) {
-    try {
-      const { id } = req.params;
+    await helpEntry.destroy();
 
-      const helpEntry = await HelpCenter.findByPk(id);
-      if (!helpEntry) {
-        return res.status(404).json({ error: 'Entrada não encontrada' });
-      }
+    logger.info('Entrada de Help Center deletada', {
+      adminId: req.user.id,
+      entryId: id
+    });
 
-      await helpEntry.destroy();
-      res.json({ message: 'Entrada deletada com sucesso' });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: 'Erro ao deletar entrada' });
-    }
-  }
+    res.json({ message: 'Entrada deletada com sucesso' });
+  })
 };

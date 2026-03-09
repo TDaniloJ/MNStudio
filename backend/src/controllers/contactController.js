@@ -1,21 +1,43 @@
-exports.sendMessage = async (req, res) => {
-  try {
-    const { name, email, subject, message } = req.body;
+const catchAsync = require('../utils/catchAsync');
+const AppError = require('../utils/AppError');
+const logger = require('../utils/logger');
 
-    // Aqui você pode:
-    // 1. Salvar no banco de dados
-    // 2. Enviar email para o suporte
-    // 3. Integrar com serviços como SendGrid, Mailgun, etc.
+exports.sendMessage = catchAsync(async (req, res, next) => {
+  const { name, email, subject, message } = req.body;
 
-    console.log('Nova mensagem de contato:', { name, email, subject, message });
-
-    // Por enquanto, apenas retornar sucesso
-    res.json({ 
-      message: 'Mensagem recebida com sucesso!',
-      ticket_id: Date.now() // ID fictício
+  if (!name || !email || !subject || !message) {
+    throw new AppError('Todos os campos são obrigatórios', 400, 'MISSING_FIELDS', {
+      required: ['name', 'email', 'subject', 'message']
     });
-  } catch (error) {
-    console.error('Erro ao processar mensagem:', error);
-    res.status(500).json({ error: 'Erro ao enviar mensagem' });
   }
-};
+
+  // Validação básica de email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    throw new AppError('Email inválido', 400, 'INVALID_EMAIL', { email });
+  }
+
+  const ticket_id = `TKT-${Date.now()}`;
+
+  logger.info('Mensagem de contato recebida', {
+    ticketId: ticket_id,
+    name,
+    email,
+    subject
+  });
+
+  // Aqui você pode:
+  // 1. Salvar no banco de dados (Contact model)
+  // 2. Enviar email para o suporte (emailService)
+  // 3. Integrar com serviços como SendGrid, Mailgun, etc.
+
+  res.status(201).json({
+    message: 'Mensagem recebida com sucesso!',
+    ticket_id,
+    contact: {
+      name,
+      email,
+      subject
+    }
+  });
+});

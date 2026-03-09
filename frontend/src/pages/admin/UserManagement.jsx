@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
-import { formatDate, formatNumber, formatDateTime } from '../../utils/formatters';
+import { formatDate, formatNumber, formatDateTime, getImageUrl } from '../../utils/formatters';
 import { ROLE_LABELS } from '../../utils/constants';
 import Card from '../../components/common/Card';
 import SearchBar from '../../components/common/SearchBar';
@@ -581,8 +581,16 @@ const UserManagement = () => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-primary-600 rounded-full flex items-center justify-center text-white font-semibold">
-                            {user.username?.charAt(0).toUpperCase() || 'U'}
+                          <div className="w-10 h-10 bg-primary-600 rounded-full flex items-center justify-center text-white font-semibold overflow-hidden">
+                            {user.avatar_url ? (
+                              <img
+                                src={getImageUrl(user.avatar_url)}
+                                alt="Avatar"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              user.username?.charAt(0).toUpperCase() || 'U'
+                            )}
                           </div>
                           <div>
                             <p className="font-medium text-gray-900">
@@ -1059,8 +1067,16 @@ const UserDetailsModal = ({ user, onClose }) => {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4 pb-4 border-b">
-          <div className="w-16 h-16 bg-primary-600 rounded-full flex items-center justify-center text-white font-semibold text-xl">
-            {user.username?.charAt(0).toUpperCase()}
+          <div className="w-16 h-16 bg-primary-600 rounded-full flex items-center justify-center text-white font-semibold text-xl overflow-hidden">
+            {user.avatar_url ? (
+              <img
+                src={getImageUrl(user.avatar_url)}
+                alt="Avatar"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              user.username?.charAt(0).toUpperCase()
+            )}
           </div>
           <div className="flex-1">
             <h3 className="text-lg font-semibold text-gray-900">{user.username}</h3>

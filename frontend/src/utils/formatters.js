@@ -35,7 +35,9 @@ export const getImageUrl = (path) => {
   
   // Remove barra dupla se existir
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  return `http://localhost:5000${cleanPath}`;
+  // Adiciona timestamp como cache-buster para forçar recarregamento de imagens atualizadas
+  const timestamp = new Date().getTime();
+  return `http://localhost:5000${cleanPath}?t=${timestamp}`;
 };
 
 export const truncateText = (text, maxLength) => {

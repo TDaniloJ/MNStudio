@@ -20,6 +20,7 @@ import { useNovelStore } from '../store/novelStore';
 import { favoriteService } from '../services/favoriteService';
 import { useAuthStore } from '../store/authStore';
 import { getImageUrl, formatDate, formatNumber } from '../utils/formatters';
+import { ratingService } from '../services/ratingService';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
 import Loading from '../components/common/Loading';
@@ -28,7 +29,7 @@ const NovelDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { currentNovel, loading, fetchNovelById, clearCurrentNovel } = useNovelStore();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -157,6 +158,25 @@ const NovelDetail = () => {
         return 'Desconhecido';
     }
   };
+
+  const [userRating, setUserRating] = useState(0);
+  const [ratingLoading, setRatingLoading] = useState(false);
+
+  useEffect(() => {
+    const loadRatings = async () => {
+      if (!currentNovel) return;
+      try {
+        const res = await ratingService.getRatings('novel', currentNovel.id);
+        if (res.ratings && res.ratings.length > 0) {
+          const me = res.ratings.find(r => r.user_id === (user?.id || 0));
+          if (me) setUserRating(me.score);
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    loadRatings();
+  }, [currentNovel]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -407,8 +427,43 @@ const NovelDetail = () => {
                     Avaliação
                   </span>
                   <span className="font-semibold">
-                    {currentNovel.rating > 0 ? currentNovel.rating.toFixed(1) : "N/A"}
-                  </span>
+                      {(() => {
+                        const ratingValue = Number(currentNovel.rating) || 0;
+                        return ratingValue > 0 ? ratingValue.toFixed(1) : 'N/A';
+                      })()}
+                    </span>
+                </div>
+                {/* Rating UI */}
+                <div className="mt-2 flex items-center gap-1">
+                  {[1,2,3,4,5].map((s) => (
+                    <button
+                      key={s}
+                      onClick={async () => {
+                        if (!isAuthenticated) {
+                          toast.error('Faça login para avaliar');
+                          navigate('/login');
+                          return;
+                        }
+                        try {
+                          setRatingLoading(true);
+                          await ratingService.submitRating('novel', currentNovel.id, s);
+                          await fetchNovelById(id);
+                          setUserRating(s);
+                          toast.success('Avaliação enviada');
+                        } catch (err) {
+                          toast.error('Erro ao enviar avaliação');
+                        } finally {
+                          setRatingLoading(false);
+                        }
+                      }}
+                      className={`transform transition duration-150 ${userRating >= s ? 'text-yellow-400' : 'text-gray-300'} hover:scale-110`}
+                      disabled={ratingLoading}
+                      aria-label={`Avaliar ${s} estrelas`}
+                      title={`Avaliar ${s} estrelas`}
+                    >
+                      <Star className="w-4 h-4" />
+                    </button>
+                  ))}
                 </div>
 
                 <div className="flex items-center justify-between">

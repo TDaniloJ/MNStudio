@@ -139,6 +139,17 @@ const NovelChapterEditor = () => {
         toast.success('Capítulo criado!');
       }
 
+      if (!formData.chapter_number || String(formData.chapter_number).trim() === '') {
+        toast.error('Número do capítulo é obrigatório');
+        return;
+      }
+
+      const chapterNumber = Number(formData.chapter_number);
+      if (!Number.isFinite(chapterNumber)) {
+        toast.error('Número do capítulo inválido');
+        return;
+      }
+
       navigate(`/admin/novels/${novelId}/chapters`);
     } catch (error) {
       toast.error('Erro ao salvar capítulo');

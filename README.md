@@ -1,83 +1,141 @@
-# Novel-Manga
+# 📚 MN Studio - Plataforma de Mangás e Novels
 
-Descrição
----------
+Plataforma completa para leitura de mangás e novels com suporte a capítulos, favoritos, histórico de leitura, sistema de badges, coins e muito mais.
 
-Novel-Manga é uma plataforma de leitura e publicação para mangás e novels, com foco em facilitar a criação, organização e leitura de conteúdo serializado. O projeto inclui um painel administrativo para gerenciar obras, capítulos, worldbuilding (personagens, mundos, sistemas de magia e cultivo) e integrações com ferramentas de IA para auxiliar na geração e edição de capítulos.
+## 🚀 Quick Start
 
-Introdução
----------
+### Pré-requisitos
+- Node.js 18+
+- PostgreSQL 12+
+- npm ou yarn
 
-Este repositório contém o backend (API, banco de dados e scripts de sincronização) e o frontend (aplicação em React com Tailwind CSS). A aplicação oferece:
+### Setup Local (5 minutos)
 
-- Listagem e leitura de mangas e novels.
-- Área administrativa para criar/editar obras, capítulos e metadados.
-- Painel de worldbuilding para gerenciar personagens, mundos, sistemas de magia e cultivo, associáveis a uma novel.
-- Integração com provedores de IA para geração, continuação e melhoria de texto.
-- Suporte a modo claro/escuro, upload de capas e gerenciamento de imagens.
+1. **Clone e instale:**
+   ```bash
+   cd c:\MNStudio
+   cd backend && npm install
+   cd ../frontend && npm install
+   ```
 
-Nos próximos passos deste README você encontrará instruções de instalação, execução e configuração das variáveis de ambiente para rodar a aplicação localmente.
+2. **Configure variáveis de ambiente:**
+   ```bash
+   cp backend/.env.example backend/.env
+   cp frontend/.env.example frontend/.env
+   # Edite backend/.env com suas credenciais de banco
+   ```
 
-Instalação e execução (rápido)
------------------------------
+3. **Configure banco de dados:**
+   ```bash
+   cd backend
+   npm run db:setup
+   ```
 
-Pré-requisitos:
+4. **Inicie os servidores:**
+   ```bash
+   # Terminal 1
+   cd backend && npm run dev
+   
+   # Terminal 2
+   cd frontend && npm run dev
+   ```
 
-- Node.js (v18+ recomendado)
-- PostgreSQL (ou outro DB configurado no backend)
+Acesse: **http://localhost:5173**
 
-Backend
+---
 
-1. Instale dependências:
+## 📋 Documentação
 
-```bash
-cd backend
-npm install
+| Documento | Descrição |
+|-----------|-----------|
+| **[docs/SETUP.md](./docs/SETUP.md)** | Instalação detalhada, troubleshooting, scripts |
+| **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** | Estrutura do projeto, fluxo de dados, endpoints |
+
+---
+
+## 🏗️ Estrutura
+
+```
+MNStudio/
+├── backend/              # Node.js + Express + Sequelize
+│   ├── src/
+│   │   ├── controllers/  # Lógica de negócio
+│   │   ├── routes/       # Definição de endpoints
+│   │   ├── models/       # Modelos Sequelize
+│   │   └── middlewares/  # Auth, upload, etc
+│   └── uploads/          # Imagens de avatar, manga, etc
+├── frontend/             # React + Vite + Tailwind
+│   └── src/
+│       ├── pages/        # Rotas principais
+│       ├── components/   # Componentes reutilizáveis
+│       ├── services/     # API clients
+│       └── store/        # Estado Zustand
+└── docs/                 # Documentação (SETUP.md, ARCHITECTURE.md)
 ```
 
-2. Configure suas variáveis de ambiente criando um arquivo `.env` na pasta `backend` (ex.: `DATABASE_URL`, `PORT`, `JWT_SECRET`, chaves dos provedores de IA). Consulte `backend/src/config` para chaves específicas.
+---
 
-3. Sincronize/migre o banco (se aplicável) e rode seeds:
+## 🔑 Funcionalidades
+
+- 📖 Leitura de mangás e novels com capítulos
+- 👤 Perfil (avatar, banner, bio) + OAuth Google
+- 🏆 Badges, coins, ranking por leituras
+- 🛠️ Admin: gerenciar usuários, conteúdo, estatísticas
+- 🔐 2FA, session manager, histórico automático
+- 💬 Socket.io para notificações em tempo real
+- 🌍 Worldbuilding: personagens, mundos, sistemas de magia
+
+---
+
+## 🔐 Stack Tecnológico
+
+| Camada | Tecnologia |
+|--------|-----------|
+| **Backend** | Node.js, Express, Sequelize ORM |
+| **Database** | PostgreSQL 12+ |
+| **Frontend** | React 18, Vite, Zustand, Tailwind CSS |
+| **Real-time** | Socket.io |
+| **Auth** | JWT (Bearer tokens) + OAuth Google |
+| **Upload** | Multer com validação de tipos |
+
+---
+
+## 📚 Variáveis de Ambiente
+
+Copie `.env.example` para `.env` em ambas as pastas:
 
 ```bash
-npm run migrate     # se usar migrations
-npm run seed        # popular dados de exemplo
+# Backend
+DATABASE_URL=postgresql://user:pass@localhost:5432/mnstudio
+JWT_SECRET=seu_super_secreto_aqui
+GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
+# ... mais variáveis em backend/.env.example
 ```
-
-4. Inicie a API em desenvolvimento:
 
 ```bash
-npm run dev
-# ou
-npm start
+# Frontend
+VITE_API_URL=http://localhost:5000/api
+# ... mais em frontend/.env.example
 ```
 
-Frontend
+Veja [docs/SETUP.md](./docs/SETUP.md) para documentação completa.
 
-1. Instale dependências e rode em modo dev:
+---
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+## 🤝 Contribuindo
 
-2. Abra o app no navegador (por padrão o Vite usa `http://localhost:5173`).
+1. Crie branch: `git checkout -b feature/sua-feature`
+2. Commit: `git commit -m 'Adiciona feature X'`
+3. Push: `git push origin feature/sua-feature`
+4. Abra Pull Request
 
-Scripts úteis
+---
 
-- Backend: `npm run dev`, `npm start`, `npm run sync-db`, `npm run create-admin`.
-- Frontend: `npm run dev`, `npm run build`, `npm run preview`.
+## 📞 Suporte
 
-Observações importantes
+Para dúvidas sobre setup, veja [docs/SETUP.md#troubleshooting](./docs/SETUP.md).
+Para entender a arquitetura, consulte [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
-- O `WorldbuildingPanel` já suporta associar entidades a uma `novel` (quando acessado a partir da página/rota da novel ele assume o `novelId`).
-- Para uso da IA, configure as chaves dos provedores no backend (`.env`) e confirme que `backend/src/config/aiProviders.js` está apontando para os provedores desejados.
-- Uploads são armazenados na pasta `backend/uploads` por padrão — verifique permissões.
+---
 
-Contribuindo
-
-1. Crie uma branch a partir de `main` (ex: `feature/worldbuilding-crud`).
-2. Abra um PR descrevendo a mudança.
-
-Gostaria que eu adicionasse exemplos de `.env` e variáveis necessárias ao README (por ex.: `DATABASE_URL`, `PORT`, `JWT_SECRET`, `OPENAI_API_KEY`)?
+**Última atualização:** 1º de fevereiro de 2026

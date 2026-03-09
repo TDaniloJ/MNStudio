@@ -14,6 +14,7 @@ import { getImageUrl } from '../utils/formatters';
 import { ROLE_LABELS } from '../utils/constants';
 import { statsService } from '../services/statsService';
 import { activityService } from '../services/activityService';
+import { badgeService } from '../services/userEnhancementService';
 import Card from '../components/common/Card';
 import Input from '../components/common/Input';
 import Button from '../components/common/Button';
@@ -119,17 +120,18 @@ const Profile = () => {
 
   // Conquistas
   useEffect(() => {
+    if (!user?.id) return;
     async function loadAchievements() {
       try {
-        const data = await badgeService.getMyBadges();
-        setAchievements(data);
+        const data = await badgeService.getUserBadges(user.id);
+        setAchievements(Array.isArray(data?.badges) ? data.badges : []);
       } catch (err) {
         console.error('Erro ao carregar conquistas:', err);
       }
     }
 
     loadAchievements();
-  }, []);
+  }, [user?.id]);
 
   // 🔄 Alternar entre modo visualização e edição
   const handleEditToggle = () => {
@@ -467,7 +469,8 @@ const Profile = () => {
         bannerFormData.append('banner', bannerFile);
         try {
           const bannerResponse = await authService.updateBanner(bannerFormData);
-          updateUser(prev => ({ ...prev, banner_url: bannerResponse.banner_url }));
+          // updateUser espera um objeto de usuário, não uma função
+          updateUser({ ...user, banner_url: bannerResponse.banner_url });
         } catch (error) {
           console.error('Erro ao atualizar banner:', error);
         }
@@ -551,7 +554,7 @@ const Profile = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <h3 className="font-semibold text-gray-900 dark:text-white">Informações de Contato</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-white">Informações</h3>
                 <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                   <Mail className="w-4 h-4" />
                   <span>{user?.email}</span>
@@ -617,6 +620,31 @@ const Profile = () => {
         </Card>
       </div>
 
+      {/* blocos abaixo do componente de Visualização Pública do Perfil */}
+
+      {/* Favoritos recentes */}
+      <div className="space-y-6">
+        <Card className="p-6">
+          <h3 className="font-semibold text-lg mb-4 text-gray-900 dark:text-white">Favoritos Recentes</h3>
+          <div className="space-y-3">
+            {stats?.recent_favorites?.length === 0 && (
+              <p className="text-gray-600 dark:text-gray-400">Nenhum favorito recente.</p>
+            )}
+            {stats?.recent_favorites?.map((item) => (
+              <div key={item.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
+                  <Heart className="w-4 h-4 text-primary-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{item.title}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{item.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
       <div className="space-y-6">
         <Card className="p-6">
           <h3 className="font-semibold text-lg mb-4 text-gray-900 dark:text-white">Atividade Recente</h3>
@@ -636,17 +664,6 @@ const Profile = () => {
                 </div>
               </div>
             ))}
-            
-            {/* Exemplo de atividade estática */}
-            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <Activity className="w-4 h-4 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">Post publicado</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">2 horas atrás</p>
-              </div>
-            </div>
           </div>
         </Card>
 

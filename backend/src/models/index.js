@@ -19,6 +19,7 @@ db.Novel = require('./Novel')(sequelize, Sequelize);
 db.MangaChapter = require('./MangaChapter')(sequelize, Sequelize);
 db.NovelChapter = require('./NovelChapter')(sequelize, Sequelize);
 db.MangaPage = require('./MangaPage')(sequelize, Sequelize);
+db.Rating = require('./Rating')(sequelize, Sequelize);
 db.Genre = require('./Genre')(sequelize, Sequelize);
 db.Favorite = require('./Favorite')(sequelize, Sequelize);
 db.ReadingHistory = require('./ReadingHistory')(sequelize, Sequelize);

@@ -57,11 +57,8 @@ const Contact = () => {
     try {
       setLoading(true);
       
-      // Simular envio (você pode criar um endpoint real no backend)
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Aqui você faria: await api.post('/contact', data);
-      
+      // Enviar para o backend
+      await api.post('/contact', data);
       setSubmitted(true);
       toast.success('Mensagem enviada com sucesso!');
       reset();

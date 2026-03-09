@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { Settings as SettingsIcon } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { getImageUrl } from '../../utils/formatters';
 import ThemeToggle from '../common/ThemeToggle';
 import NotificationCenter from '../common/NotificationCenter';
 import HelpCenter from '../common/HelpeCenter';
@@ -163,8 +164,16 @@ const AdminLayout = () => {
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 className="flex items-center gap-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
               >
-                <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                  {user?.username?.charAt(0).toUpperCase()}
+                <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white font-semibold text-sm overflow-hidden">
+                  {user?.avatar_url ? (
+                    <img
+                      src={getImageUrl(user.avatar_url)}
+                      alt="Avatar"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    user?.username?.charAt(0).toUpperCase()
+                  )}
                 </div>
                 <div className="hidden sm:block text-left">
                   <p className="text-sm font-medium text-gray-900 dark:text-white">

@@ -102,6 +102,15 @@ const NovelChapterManager = () => {
           </p>
         </div>
         
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate(`/admin/novels/${id}/worldbuilding`)}
+        >
+          <Sparkles className="w-4 h-4 mr-2" />
+           Worldbuilding
+        </Button>
+
         <Button onClick={handleCreateChapter}>
           <Plus className="w-4 h-4 mr-2" />
           Novo Capítulo

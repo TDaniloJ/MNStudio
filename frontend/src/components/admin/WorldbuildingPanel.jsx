@@ -11,7 +11,9 @@ import Select from '../common/Select';
 import { novelService } from '../../services/novelService';
 import ProviderSelector from './ProviderSelector';
 
-const WorldbuildingPanel = ({ novelId, onSelect }) => {
+const WorldbuildingPanel = ({ novelId, onSelect, mode = 'manage' }) => {
+  const isManage = mode === 'manage';
+  const isSelect = mode === 'select';
   const [activeTab, setActiveTab] = useState('characters');
   const [characters, setCharacters] = useState([]);
   const [worlds, setWorlds] = useState([]);
@@ -506,6 +508,10 @@ const WorldbuildingModal = ({ type, novelId, item, onClose, onSuccess }) => {
           break;
 
         case 'cultivation':
+            if (!formData.name?.trim()) {
+              toast.error('O nome do sistema de cultivo é obrigatório');
+              return;
+            }
           await worldbuildingService.createCultivationSystem(targetNovelId, formData);
           break;
       }

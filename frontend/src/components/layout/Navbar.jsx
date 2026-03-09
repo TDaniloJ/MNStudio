@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { BookOpen, Menu, X, User, LogOut, Settings, Heart, History, Search } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { getImageUrl } from '../../utils/formatters';
 import Button from '../common/Button';
 import ThemeToggle from '../common/ThemeToggle';
 import NotificationCenter from '../common/NotificationCenter';
@@ -56,6 +57,9 @@ const Navbar = () => {
             <Link to="/rankings" className="text-gray-700 hover:text-primary-600 font-medium transition dark:text-gray-300 dark:hover:text-primary-400">
               Rankings
             </Link>
+            <Link to="/subscription" className="text-gray-700 hover:text-primary-600 font-medium transition dark:text-gray-300 dark:hover:text-primary-400">
+              Assinatura
+            </Link>
             <Link 
               to="/search" 
               className="relative p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
@@ -78,8 +82,16 @@ const Navbar = () => {
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className="flex items-center gap-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
                 >
-                  <div className="w-8 h-8 bg-primary-600 dark:bg-primary-500 rounded-full flex items-center justify-center text-white font-semibold">
-                    {user?.username?.charAt(0).toUpperCase()}
+                  <div className="w-8 h-8 bg-primary-600 dark:bg-primary-500 rounded-full flex items-center justify-center text-white font-semibold overflow-hidden">
+                    {user?.avatar_url ? (
+                      <img
+                        src={getImageUrl(user.avatar_url)}
+                        alt="Avatar"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      user?.username?.charAt(0).toUpperCase()
+                    )}
                   </div>
                   <span className="font-medium dark:text-white">{user?.username}</span>
                 </button>
@@ -106,6 +118,14 @@ const Navbar = () => {
                       >
                         <Heart className="w-4 h-4" />
                         Favoritos
+                      </Link>
+                      <Link
+                        to="/subscription"
+                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition text-gray-700 dark:text-gray-200"
+                        onClick={() => setIsUserMenuOpen(false)}
+                      >
+                        <BookOpen className="w-4 h-4" />
+                        Assinatura
                       </Link>
                       <Link
                         to="/history"
@@ -202,6 +222,13 @@ const Navbar = () => {
             >
               Pesquisa Avançada
             </Link>
+                <Link
+                  to="/subscription"
+                  className="block py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Assinatura
+                </Link>
             
             {isAuthenticated ? (
               <>

@@ -1,0 +1,413 @@
+﻿{
+    "success":  true,
+    "chapters":  [
+                     {
+                         "id":  32,
+                         "manga_id":  9,
+                         "chapter_number":  "1.0",
+                         "title":  "",
+                         "views":  11,
+                         "uploaded_by":  1,
+                         "created_at":  "2026-01-21T04:40:24.765Z",
+                         "updated_at":  "2026-01-23T04:30:23.106Z",
+                         "pages":  [
+                                       {
+                                           "id":  458,
+                                           "page_number":  1,
+                                           "image_url":  "/uploads/manga/chapter-32-page-1-1768970450007.webp"
+                                       },
+                                       {
+                                           "id":  459,
+                                           "page_number":  2,
+                                           "image_url":  "/uploads/manga/chapter-32-page-2-1768970450244.webp"
+                                       },
+                                       {
+                                           "id":  460,
+                                           "page_number":  3,
+                                           "image_url":  "/uploads/manga/chapter-32-page-3-1768970450774.webp"
+                                       },
+                                       {
+                                           "id":  461,
+                                           "page_number":  4,
+                                           "image_url":  "/uploads/manga/chapter-32-page-4-1768970451272.webp"
+                                       },
+                                       {
+                                           "id":  462,
+                                           "page_number":  5,
+                                           "image_url":  "/uploads/manga/chapter-32-page-5-1768970451740.webp"
+                                       },
+                                       {
+                                           "id":  463,
+                                           "page_number":  6,
+                                           "image_url":  "/uploads/manga/chapter-32-page-6-1768970452285.webp"
+                                       },
+                                       {
+                                           "id":  464,
+                                           "page_number":  7,
+                                           "image_url":  "/uploads/manga/chapter-32-page-7-1768970452770.webp"
+                                       },
+                                       {
+                                           "id":  465,
+                                           "page_number":  8,
+                                           "image_url":  "/uploads/manga/chapter-32-page-8-1768970453268.webp"
+                                       },
+                                       {
+                                           "id":  466,
+                                           "page_number":  9,
+                                           "image_url":  "/uploads/manga/chapter-32-page-9-1768970453750.webp"
+                                       },
+                                       {
+                                           "id":  467,
+                                           "page_number":  10,
+                                           "image_url":  "/uploads/manga/chapter-32-page-10-1768970454220.webp"
+                                       },
+                                       {
+                                           "id":  468,
+                                           "page_number":  11,
+                                           "image_url":  "/uploads/manga/chapter-32-page-11-1768970454721.webp"
+                                       },
+                                       {
+                                           "id":  469,
+                                           "page_number":  12,
+                                           "image_url":  "/uploads/manga/chapter-32-page-12-1768970455216.webp"
+                                       },
+                                       {
+                                           "id":  470,
+                                           "page_number":  13,
+                                           "image_url":  "/uploads/manga/chapter-32-page-13-1768970455776.webp"
+                                       },
+                                       {
+                                           "id":  471,
+                                           "page_number":  14,
+                                           "image_url":  "/uploads/manga/chapter-32-page-14-1768970456305.webp"
+                                       },
+                                       {
+                                           "id":  472,
+                                           "page_number":  15,
+                                           "image_url":  "/uploads/manga/chapter-32-page-15-1768970456837.webp"
+                                       },
+                                       {
+                                           "id":  473,
+                                           "page_number":  16,
+                                           "image_url":  "/uploads/manga/chapter-32-page-16-1768970457359.webp"
+                                       },
+                                       {
+                                           "id":  474,
+                                           "page_number":  17,
+                                           "image_url":  "/uploads/manga/chapter-32-page-17-1768970457934.webp"
+                                       },
+                                       {
+                                           "id":  475,
+                                           "page_number":  18,
+                                           "image_url":  "/uploads/manga/chapter-32-page-18-1768970458435.webp"
+                                       },
+                                       {
+                                           "id":  476,
+                                           "page_number":  19,
+                                           "image_url":  "/uploads/manga/chapter-32-page-19-1768970458920.webp"
+                                       },
+                                       {
+                                           "id":  477,
+                                           "page_number":  20,
+                                           "image_url":  "/uploads/manga/chapter-32-page-20-1768970459431.webp"
+                                       },
+                                       {
+                                           "id":  478,
+                                           "page_number":  21,
+                                           "image_url":  "/uploads/manga/chapter-32-page-21-1768970459837.webp"
+                                       },
+                                       {
+                                           "id":  479,
+                                           "page_number":  22,
+                                           "image_url":  "/uploads/manga/chapter-32-page-22-1768970460302.webp"
+                                       },
+                                       {
+                                           "id":  480,
+                                           "page_number":  23,
+                                           "image_url":  "/uploads/manga/chapter-32-page-23-1768970460865.webp"
+                                       },
+                                       {
+                                           "id":  481,
+                                           "page_number":  24,
+                                           "image_url":  "/uploads/manga/chapter-32-page-24-1768970461377.webp"
+                                       },
+                                       {
+                                           "id":  482,
+                                           "page_number":  25,
+                                           "image_url":  "/uploads/manga/chapter-32-page-25-1768970461891.webp"
+                                       },
+                                       {
+                                           "id":  483,
+                                           "page_number":  26,
+                                           "image_url":  "/uploads/manga/chapter-32-page-26-1768970462389.webp"
+                                       },
+                                       {
+                                           "id":  484,
+                                           "page_number":  27,
+                                           "image_url":  "/uploads/manga/chapter-32-page-27-1768970462873.webp"
+                                       },
+                                       {
+                                           "id":  485,
+                                           "page_number":  28,
+                                           "image_url":  "/uploads/manga/chapter-32-page-28-1768970463404.webp"
+                                       },
+                                       {
+                                           "id":  486,
+                                           "page_number":  29,
+                                           "image_url":  "/uploads/manga/chapter-32-page-29-1768970463936.webp"
+                                       },
+                                       {
+                                           "id":  487,
+                                           "page_number":  30,
+                                           "image_url":  "/uploads/manga/chapter-32-page-30-1768970464435.webp"
+                                       },
+                                       {
+                                           "id":  488,
+                                           "page_number":  31,
+                                           "image_url":  "/uploads/manga/chapter-32-page-31-1768970464914.webp"
+                                       },
+                                       {
+                                           "id":  489,
+                                           "page_number":  32,
+                                           "image_url":  "/uploads/manga/chapter-32-page-32-1768970465426.webp"
+                                       },
+                                       {
+                                           "id":  490,
+                                           "page_number":  33,
+                                           "image_url":  "/uploads/manga/chapter-32-page-33-1768970465965.webp"
+                                       },
+                                       {
+                                           "id":  491,
+                                           "page_number":  34,
+                                           "image_url":  "/uploads/manga/chapter-32-page-34-1768970466486.webp"
+                                       },
+                                       {
+                                           "id":  492,
+                                           "page_number":  35,
+                                           "image_url":  "/uploads/manga/chapter-32-page-35-1768970466969.webp"
+                                       },
+                                       {
+                                           "id":  493,
+                                           "page_number":  36,
+                                           "image_url":  "/uploads/manga/chapter-32-page-36-1768970467476.webp"
+                                       },
+                                       {
+                                           "id":  494,
+                                           "page_number":  37,
+                                           "image_url":  "/uploads/manga/chapter-32-page-37-1768970468014.webp"
+                                       },
+                                       {
+                                           "id":  495,
+                                           "page_number":  38,
+                                           "image_url":  "/uploads/manga/chapter-32-page-38-1768970468558.webp"
+                                       },
+                                       {
+                                           "id":  496,
+                                           "page_number":  39,
+                                           "image_url":  "/uploads/manga/chapter-32-page-39-1768970469152.webp"
+                                       },
+                                       {
+                                           "id":  497,
+                                           "page_number":  40,
+                                           "image_url":  "/uploads/manga/chapter-32-page-40-1768970469759.webp"
+                                       },
+                                       {
+                                           "id":  498,
+                                           "page_number":  41,
+                                           "image_url":  "/uploads/manga/chapter-32-page-41-1768970470371.webp"
+                                       },
+                                       {
+                                           "id":  499,
+                                           "page_number":  42,
+                                           "image_url":  "/uploads/manga/chapter-32-page-42-1768970470896.webp"
+                                       },
+                                       {
+                                           "id":  500,
+                                           "page_number":  43,
+                                           "image_url":  "/uploads/manga/chapter-32-page-43-1768970471473.webp"
+                                       },
+                                       {
+                                           "id":  501,
+                                           "page_number":  44,
+                                           "image_url":  "/uploads/manga/chapter-32-page-44-1768970472021.webp"
+                                       },
+                                       {
+                                           "id":  502,
+                                           "page_number":  45,
+                                           "image_url":  "/uploads/manga/chapter-32-page-45-1768970472517.webp"
+                                       },
+                                       {
+                                           "id":  503,
+                                           "page_number":  46,
+                                           "image_url":  "/uploads/manga/chapter-32-page-46-1768970473038.webp"
+                                       },
+                                       {
+                                           "id":  504,
+                                           "page_number":  47,
+                                           "image_url":  "/uploads/manga/chapter-32-page-47-1768970473564.webp"
+                                       },
+                                       {
+                                           "id":  505,
+                                           "page_number":  48,
+                                           "image_url":  "/uploads/manga/chapter-32-page-48-1768970474063.webp"
+                                       },
+                                       {
+                                           "id":  506,
+                                           "page_number":  49,
+                                           "image_url":  "/uploads/manga/chapter-32-page-49-1768970474577.webp"
+                                       },
+                                       {
+                                           "id":  507,
+                                           "page_number":  50,
+                                           "image_url":  "/uploads/manga/chapter-32-page-50-1768970475108.webp"
+                                       },
+                                       {
+                                           "id":  508,
+                                           "page_number":  51,
+                                           "image_url":  "/uploads/manga/chapter-32-page-51-1768970475669.webp"
+                                       },
+                                       {
+                                           "id":  509,
+                                           "page_number":  52,
+                                           "image_url":  "/uploads/manga/chapter-32-page-52-1768970476206.webp"
+                                       },
+                                       {
+                                           "id":  510,
+                                           "page_number":  53,
+                                           "image_url":  "/uploads/manga/chapter-32-page-53-1768970476743.webp"
+                                       },
+                                       {
+                                           "id":  511,
+                                           "page_number":  54,
+                                           "image_url":  "/uploads/manga/chapter-32-page-54-1768970477321.webp"
+                                       },
+                                       {
+                                           "id":  512,
+                                           "page_number":  55,
+                                           "image_url":  "/uploads/manga/chapter-32-page-55-1768970477878.webp"
+                                       },
+                                       {
+                                           "id":  513,
+                                           "page_number":  56,
+                                           "image_url":  "/uploads/manga/chapter-32-page-56-1768970478393.webp"
+                                       },
+                                       {
+                                           "id":  514,
+                                           "page_number":  57,
+                                           "image_url":  "/uploads/manga/chapter-32-page-57-1768970478876.webp"
+                                       },
+                                       {
+                                           "id":  515,
+                                           "page_number":  58,
+                                           "image_url":  "/uploads/manga/chapter-32-page-58-1768970479313.webp"
+                                       },
+                                       {
+                                           "id":  516,
+                                           "page_number":  59,
+                                           "image_url":  "/uploads/manga/chapter-32-page-59-1768970479780.webp"
+                                       },
+                                       {
+                                           "id":  517,
+                                           "page_number":  60,
+                                           "image_url":  "/uploads/manga/chapter-32-page-60-1768970480262.webp"
+                                       },
+                                       {
+                                           "id":  518,
+                                           "page_number":  61,
+                                           "image_url":  "/uploads/manga/chapter-32-page-61-1768970480729.webp"
+                                       },
+                                       {
+                                           "id":  519,
+                                           "page_number":  62,
+                                           "image_url":  "/uploads/manga/chapter-32-page-62-1768970481214.webp"
+                                       },
+                                       {
+                                           "id":  520,
+                                           "page_number":  63,
+                                           "image_url":  "/uploads/manga/chapter-32-page-63-1768970481699.webp"
+                                       },
+                                       {
+                                           "id":  521,
+                                           "page_number":  64,
+                                           "image_url":  "/uploads/manga/chapter-32-page-64-1768970482181.webp"
+                                       },
+                                       {
+                                           "id":  522,
+                                           "page_number":  65,
+                                           "image_url":  "/uploads/manga/chapter-32-page-65-1768970482669.webp"
+                                       },
+                                       {
+                                           "id":  523,
+                                           "page_number":  66,
+                                           "image_url":  "/uploads/manga/chapter-32-page-66-1768970483216.webp"
+                                       },
+                                       {
+                                           "id":  524,
+                                           "page_number":  67,
+                                           "image_url":  "/uploads/manga/chapter-32-page-67-1768970483721.webp"
+                                       },
+                                       {
+                                           "id":  525,
+                                           "page_number":  68,
+                                           "image_url":  "/uploads/manga/chapter-32-page-68-1768970484242.webp"
+                                       },
+                                       {
+                                           "id":  526,
+                                           "page_number":  69,
+                                           "image_url":  "/uploads/manga/chapter-32-page-69-1768970484748.webp"
+                                       },
+                                       {
+                                           "id":  527,
+                                           "page_number":  70,
+                                           "image_url":  "/uploads/manga/chapter-32-page-70-1768970485230.webp"
+                                       },
+                                       {
+                                           "id":  528,
+                                           "page_number":  71,
+                                           "image_url":  "/uploads/manga/chapter-32-page-71-1768970485728.webp"
+                                       },
+                                       {
+                                           "id":  529,
+                                           "page_number":  72,
+                                           "image_url":  "/uploads/manga/chapter-32-page-72-1768970486227.webp"
+                                       },
+                                       {
+                                           "id":  530,
+                                           "page_number":  73,
+                                           "image_url":  "/uploads/manga/chapter-32-page-73-1768970486742.webp"
+                                       },
+                                       {
+                                           "id":  531,
+                                           "page_number":  74,
+                                           "image_url":  "/uploads/manga/chapter-32-page-74-1768970487249.webp"
+                                       },
+                                       {
+                                           "id":  532,
+                                           "page_number":  75,
+                                           "image_url":  "/uploads/manga/chapter-32-page-75-1768970487746.webp"
+                                       },
+                                       {
+                                           "id":  533,
+                                           "page_number":  76,
+                                           "image_url":  "/uploads/manga/chapter-32-page-76-1768970488229.webp"
+                                       },
+                                       {
+                                           "id":  534,
+                                           "page_number":  77,
+                                           "image_url":  "/uploads/manga/chapter-32-page-77-1768970488710.webp"
+                                       },
+                                       {
+                                           "id":  535,
+                                           "page_number":  78,
+                                           "image_url":  "/uploads/manga/chapter-32-page-78-1768970489133.webp"
+                                       },
+                                       {
+                                           "id":  536,
+                                           "page_number":  79,
+                                           "image_url":  "/uploads/manga/chapter-32-page-79-1768970489602.webp"
+                                       }
+                                   ]
+                     }
+                 ],
+    "count":  1
+}

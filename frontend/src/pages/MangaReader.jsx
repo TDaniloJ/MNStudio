@@ -23,6 +23,24 @@ import Loading from '../components/common/Loading';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 
+const READER_ASSETS = {
+  fallback:
+    import.meta.env.VITE_READER_FALLBACK_IMAGE ||
+    '/images/reader/reader-page-error.png',
+
+  loading:
+    import.meta.env.VITE_READER_LOADING_IMAGE ||
+    '/images/reader/reader-loading.png',
+
+  empty:
+    import.meta.env.VITE_READER_EMPTY_IMAGE ||
+    '/images/reader/reader-empty.png',
+
+  end:
+    import.meta.env.VITE_READER_END_IMAGE ||
+    '/images/reader/reader-end.png',
+};
+
 const MangaReader = () => {
   const { mangaId, chapterId } = useParams();
   const navigate = useNavigate();
@@ -74,6 +92,31 @@ const MangaReader = () => {
   const [showNextConfirm, setShowNextConfirm] = useState(false);
   const [nextChapterTarget, setNextChapterTarget] = useState(null);
   const [showEndModal, setShowEndModal] = useState(false);
+
+  useEffect(() => {
+    if (readingMode !== 'continuous') return;
+
+    const container = document.getElementById('webtoon-container');
+    if (!container) return;
+
+    const onScroll = () => {
+      const images = container.querySelectorAll('img[data-page-index]');
+      let visiblePage = 0;
+
+      images.forEach((img) => {
+        const rect = img.getBoundingClientRect();
+        if (rect.top < window.innerHeight * 0.5) {
+          visiblePage = Number(img.dataset.pageIndex);
+        }
+      });
+
+      setCurrentPage(visiblePage);
+    };
+
+    container.addEventListener('scroll', onScroll);
+    return () => container.removeEventListener('scroll', onScroll);
+  }, [readingMode, pages]);
+
 
   useEffect(() => {
     loadChapter();
@@ -129,6 +172,7 @@ const MangaReader = () => {
       setPages(pagesData);
       setChapter(chapterData);
       setCurrentPage(0);
+      scrollToTop();
 
       // Carregar lista de capítulos do mangá para navegação entre capítulos
       try {
@@ -171,6 +215,17 @@ const MangaReader = () => {
     }
   };
 
+  const scrollToTop = () => {
+    const container =
+      readingMode === 'continuous'
+        ? document.getElementById('webtoon-container')
+        : document.getElementById('page-container');
+
+    if (container) {
+      container.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   const preloadImages = () => {
     if (!pages || pages.length === 0) return;
     
@@ -186,6 +241,7 @@ const MangaReader = () => {
   const nextPage = useCallback(() => {
     if (pages && pages.length > 0 && currentPage < pages.length - 1) {
       setCurrentPage(prev => prev + 1);
+      scrollToTop();
     } else {
       // Fim do capítulo
       const hasNextChapter = chapters && currentChapterIndex >= 0 && currentChapterIndex < chapters.length - 1;
@@ -207,6 +263,7 @@ const MangaReader = () => {
   const prevPage = useCallback(() => {
     if (currentPage > 0) {
       setCurrentPage(prev => prev - 1);
+      scrollToTop();
     }
   }, [currentPage]);
 
@@ -296,13 +353,13 @@ const MangaReader = () => {
   const bgColors = {
     black: 'bg-black',
     dark: 'bg-gray-900',
-    gray: 'bg-gray-800',
+    gray: 'bg-gray-100',
     white: 'bg-white'
   };
 
   const fitModes = {
     'fit-width': 'w-full h-auto',
-    'fit-height': 'h-screen w-auto',
+    'fit-height': 'max-h-screen w-auto',
     'fit-both': 'max-w-full max-h-screen',
     'original': 'w-auto h-auto'
   };
@@ -566,19 +623,20 @@ const MangaReader = () => {
       )}
 
       {/* Reader Content */}
-      <div className="h-full flex items-center justify-center overflow-hidden">
+      <div id="page-container" className="h-full w-full overflow-y-auto overflow-x-hidden">
         {/* ✅ VERIFIQUE pages EM VEZ DE chapter.pages */}
         {readingMode === 'single' && pages && pages.length > 0 && (
-          <div className="relative flex items-center justify-center w-full h-full p-4 overflow-y-auto mx-auto py-4">
+          <div className="relative flex justify-center w-full min-h-full p-4 mx-auto py-4">
             {currentPageData ? (
               <img
                 src={getImageUrl(currentPageData.image_url)}
                 alt={`Página ${currentPage + 1}`}
-                className={`${fitModes[fitMode]} mx-auto cursor-pointer transition-transform`}
+                className={`${fitModes[fitMode]} mx-auto cursor-pointer transition-transform max-w-full max-h-full`}
                 style={{ transform: `scale(${zoom / 100})` }}
                 onClick={nextPage}
                 onError={(e) => {
-                  e.target.src = 'https://via.placeholder.com/800x1200?text=Erro+ao+carregar';
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = READER_ASSETS.fallback;
                 }}
               />
             ) : (
@@ -600,7 +658,8 @@ const MangaReader = () => {
                 alt={`Página ${currentPage}`}
                 className={`${fitModes[fitMode]}`}
                 onError={(e) => {
-                  e.target.src = 'https://via.placeholder.com/800x1200?text=Erro';
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = READER_ASSETS.fallback;
                 }}
               />
             )}
@@ -611,7 +670,8 @@ const MangaReader = () => {
                 className={`${fitModes[fitMode]}`}
                 onClick={nextPage}
                 onError={(e) => {
-                  e.target.src = 'https://via.placeholder.com/800x1200?text=Erro';
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = READER_ASSETS.fallback;
                 }}
               />
             ) : (
@@ -623,17 +683,18 @@ const MangaReader = () => {
         )}
 
         {readingMode === 'continuous' && pages && pages.length > 0 && (
-          <div className="overflow-y-auto h-full w-full max-w-4xl mx-auto py-4">
+          <div id="webtoon-container" className="h-full w-full overflow-y-auto overflow-x-hidden px-2 sm:px-4 py-6 flex flex-col items-center gap-4">
             {pages.map((page, index) => (
               page ? (
                 <img
                   key={page.id}
                   src={getImageUrl(page.image_url)}
                   alt={`Página ${index + 1}`}
-                  className="w-full mb-2"
+                  className="w-full max-w-3xl h-auto object-contain rounded-md shadow-sm transition-transform duration-300"
                   loading="lazy"
-                  onError={(e) => {
-                    e.target.src = 'https://via.placeholder.com/800x1200?text=Erro';
+                  onError={(e) => { 
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = READER_ASSETS.fallback;
                   }}
                 />
               ) : null
@@ -644,28 +705,39 @@ const MangaReader = () => {
         {/* ✅ MENSAGEM PARA QUANDO NÃO HÁ PÁGINAS */}
         {/* No final do Reader Content, substitua a mensagem atual por: */}
         {pages && pages.length === 0 && (
-          <div className="text-white text-center space-y-4">
-            <p className="text-xl">Nenhuma página encontrada neste capítulo</p>
-            <div className="space-y-2">
-              <Button 
-                onClick={loadChapter}
-                className="bg-blue-600 hover:bg-blue-700 mr-2"
-              >
-                🔄 Tentar Novamente
-              </Button>
-              <Button 
-                onClick={() => navigate(`/manga/${mangaId}`)}
-                className="bg-primary-600 hover:bg-primary-700"
-              >
-                Voltar para o mangá
-              </Button>
+          <div className="h-full w-full flex items-center justify-center p-6">
+            <div className="max-w-md w-full text-center space-y-4">
+              <img
+                src={READER_ASSETS.empty}
+                alt="Sem páginas"
+                className="w-full max-w-xs mx-auto rounded-xl shadow"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = READER_ASSETS.fallback;
+                }}
+              />
+
+              <h2 className="text-white text-xl font-bold">
+                Nenhuma página encontrada
+              </h2>
+
+              <p className="text-gray-300 text-sm">
+                Esse capítulo pode estar vazio ou com erro no upload.
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                <Button onClick={loadChapter} className="bg-blue-600 hover:bg-blue-700">
+                  🔄 Tentar novamente
+                </Button>
+
+                <Button
+                  onClick={() => navigate(`/manga/${mangaId}`)}
+                  className="bg-primary-600 hover:bg-primary-700"
+                >
+                  Voltar para o mangá
+                </Button>
+              </div>
             </div>
-            <details className="text-sm text-gray-300 max-w-md mx-auto">
-              <summary className="cursor-pointer">Detalhes técnicos</summary>
-              <pre className="text-left mt-2 bg-black/50 p-2 rounded text-xs overflow-auto">
-                {JSON.stringify({ chapter, pages }, null, 2)}
-              </pre>
-            </details>
           </div>
         )}
       </div>
@@ -717,6 +789,7 @@ const MangaReader = () => {
                   const percentage = x / rect.width;
                   const newPage = Math.floor(percentage * totalPages);
                   setCurrentPage(Math.max(0, Math.min(newPage, totalPages - 1)));
+                  scrollToTop();
                 }}
               >
                 <div 
@@ -758,7 +831,9 @@ const MangaReader = () => {
                 page ? (
                   <button
                     key={page.id}
-                    onClick={() => setCurrentPage(index)}
+                    onClick={() => {setCurrentPage(index);
+                      scrollToTop();
+                    }}
                     className={`flex-shrink-0 w-16 h-24 rounded overflow-hidden border-2 transition ${
                       currentPage === index ? 'border-primary-500 ring-2 ring-primary-500' : 'border-white/20 hover:border-white/40'
                     }`}

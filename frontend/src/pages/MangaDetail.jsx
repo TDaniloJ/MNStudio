@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useMangaStore } from '../store/mangaStore';
+import { ratingService } from '../services/ratingService';
 import { favoriteService } from '../services/favoriteService';
 import { useAuthStore } from '../store/authStore';
 import { getImageUrl, formatDate, formatNumber } from '../utils/formatters';
@@ -31,16 +32,36 @@ const MangaDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { currentManga, loading, fetchMangaById, clearCurrentManga } = useMangaStore();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [sortOrder, setSortOrder] = useState('asc');
+  const [userRating, setUserRating] = useState(0);
+  const [ratingLoading, setRatingLoading] = useState(false);
 
   useEffect(() => {
     loadManga();
     return () => clearCurrentManga();
   }, [id]);
+
+  useEffect(() => {
+    // carregar rating do usuário (se autenticado) e ratings gerais
+    const loadRatings = async () => {
+      if (!currentManga) return;
+      try {
+        const res = await ratingService.getRatings('manga', currentManga.id);
+        if (res.ratings && res.ratings.length > 0) {
+          // obter rating do usuário atual
+          const me = res.ratings.find(r => r.user_id === (user?.id || 0));
+          if (me) setUserRating(me.score);
+        }
+      } catch (e) {
+        // ignore - endpoint may require auth for user-specific info
+      }
+    };
+    loadRatings();
+  }, [currentManga]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -236,25 +257,48 @@ const MangaDetail = () => {
                   {sortedChapters.length} caps
                 </span>
 
-                {currentManga.rating > 0 && (
-                  <span className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-500/20 rounded-full backdrop-blur-sm border border-yellow-500/30">
-                    <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                    {currentManga.rating.toFixed(1)}
-                  </span>
-                )}
-              </div>
-
-              {/* Genres */}
-              <div className="flex flex-wrap gap-2 mb-6">
-                {currentManga.genres?.map((genre) => (
-                  <Link
-                    key={genre.id}
-                    to={`/mangas?genre=${genre.id}`}
-                    className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition backdrop-blur-sm"
-                  >
-                    {genre.name}
-                  </Link>
-                ))}
+                {(() => {
+                  const ratingValue = Number(currentManga.rating) || 0;
+                  return ratingValue > 0 ? (
+                    <span className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-500/20 rounded-full backdrop-blur-sm border border-yellow-500/30">
+                      <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                      {ratingValue.toFixed(1)}
+                    </span>
+                  ) : null;
+                })()}
+                {/* Rating UI */}
+                <div className="ml-3 flex items-center gap-1">
+                  {[1,2,3,4,5].map((s) => (
+                    <button
+                      key={s}
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        if (!isAuthenticated) {
+                          toast.error('Faça login para avaliar');
+                          navigate('/login');
+                          return;
+                        }
+                        try {
+                          setRatingLoading(true);
+                          await ratingService.submitRating('manga', currentManga.id, s);
+                          await fetchMangaById(id);
+                          setUserRating(s);
+                          toast.success('Avaliação enviada');
+                        } catch (err) {
+                          toast.error('Erro ao enviar avaliação');
+                        } finally {
+                          setRatingLoading(false);
+                        }
+                      }}
+                      className={`p-1 transform transition duration-150 ${userRating >= s ? 'text-yellow-400' : 'text-gray-300'} hover:scale-110`}
+                      disabled={ratingLoading}
+                      aria-label={`Avaliar ${s} estrelas`}
+                      title={`Avaliar ${s} estrelas`}
+                    >
+                      <Star className="w-4 h-4" />
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Author & Artist */}
@@ -279,6 +323,29 @@ const MangaDetail = () => {
                   <span className="font-medium">{formatDate(currentManga.created_at)}</span>
                 </div>
               </div>
+
+              {/* Genres */}
+              <div className="flex flex-wrap gap-2 mb-6">
+                {currentManga.genres?.map((genre) => (
+                  <Link
+                    key={genre.id}
+                    to={`/mangas?genre=${genre.id}`}
+                    className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition backdrop-blur-sm"
+                  >
+                    {genre.name}
+                  </Link>
+                ))}
+              </div>
+
+              {/* Synopsis */}
+              <div className="flex flex-wrap gap-2 mb-6">
+                <div className="prose max-w-none">
+                  <p className="text-gray-700 leading-relaxed whitespace-pre-line dark:text-gray-300">
+                    {currentManga.description || 'Sem descrição disponível.'}
+                  </p>
+                </div>
+              </div>
+
 
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-3">
@@ -319,6 +386,7 @@ const MangaDetail = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
+
             {/* Synopsis */}
             <Card className="p-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2 dark:text-white">
@@ -426,12 +494,15 @@ const MangaDetail = () => {
                     <span>Avaliação</span>
                   </div>
                   <span className="font-semibold text-gray-900 dark:text-gray-200">
-                    {currentManga.rating > 0 ? (
-                      <span className="flex items-center gap-1">
-                        <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                        {currentManga.rating.toFixed(1)}
-                      </span>
-                    ) : 'N/A'}
+                    {(() => {
+                      const ratingValue = Number(currentManga.rating) || 0;
+                      return ratingValue > 0 ? (
+                        <span className="flex items-center gap-1">
+                          <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                          {ratingValue.toFixed(1)}
+                        </span>
+                      ) : 'N/A';
+                    })()}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">

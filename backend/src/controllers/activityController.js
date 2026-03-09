@@ -1,124 +1,221 @@
-const { Activity } = require('../models');
+const { Activity, Notification, UserBadge, User, Favorite } = require('../models');
+const catchAsync = require('../utils/catchAsync');
+const AppError = require('../utils/AppError');
+const logger = require('../utils/logger');
 
 class ActivityController {
-  // Listar atividades do usuário
-  async getActivities(req, res) {
-    try {
-      const { user } = req;
-      const { type, limit = 20, offset = 0 } = req.query;
+  getActivities = catchAsync(async (req, res, next) => {
+    const { user } = req;
+    const { type, limit = 20, offset = 0 } = req.query;
 
-      let where = { user_id: user.id };
-      if (type) {
-        where.type = type;
-      }
-
-      const activities = await Activity.findAndCountAll({
-        where,
-        order: [['created_at', 'DESC']],
-        limit: parseInt(limit),
-        offset: parseInt(offset)
-      });
-
-      res.json({
-        activities: activities.rows,
-        total: activities.count
-      });
-    } catch (error) {
-      console.error('Erro ao buscar atividades:', error);
-      res.status(500).json({ error: 'Erro ao buscar atividades' });
+    let where = { user_id: user.id };
+    if (type) {
+      where.type = type;
     }
-  }
 
-  // Registrar nova atividade (uso interno)
-  async logActivity(user_id, type, description, related_id, related_type, metadata = null) {
-    try {
-      return await Activity.create({
-        user_id,
-        type,
-        description,
-        related_id,
-        related_type,
-        metadata
-      });
-    } catch (error) {
-      console.error('Erro ao registrar atividade:', error);
+    const activities = await Activity.findAndCountAll({
+      where,
+      order: [['created_at', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    logger.debug('Atividades do usuário recuperadas', {
+      userId: user.id,
+      count: activities.rows.length,
+      filter: type || 'all'
+    });
+
+    res.json({
+      activities: activities.rows,
+      total: activities.count
+    });
+  });
+
+  logActivity = catchAsync(async (user_id, type, description, related_id, related_type, metadata = null) => {
+    const activity = await Activity.create({
+      user_id,
+      type,
+      description,
+      related_id,
+      related_type,
+      metadata
+    });
+
+    logger.debug('Atividade registrada', {
+      userId: user_id,
+      type,
+      relatedId: related_id,
+      relatedType: related_type
+    });
+
+    return activity;
+  });
+
+  deleteActivity = catchAsync(async (req, res, next) => {
+    const { id } = req.params;
+    const { user } = req;
+
+    const activity = await Activity.findOne({ where: { id } });
+    if (!activity) {
+      throw new AppError('Atividade não encontrada', 404, 'NOT_FOUND', { resource: 'activity', id });
     }
-  }
 
-  // Deletar atividade (apenas do usuário ou admin)
-  async deleteActivity(req, res) {
-    try {
-      const { id } = req.params;
-      const { user } = req;
-
-      const activity = await Activity.findOne({
-        where: { id }
-      });
-
-      if (!activity) {
-        return res.status(404).json({ error: 'Atividade não encontrada' });
-      }
-
-      if (activity.user_id !== user.id && user.role !== 'admin') {
-        return res.status(403).json({ error: 'Você não tem permissão para deletar esta atividade' });
-      }
-
-      await activity.destroy();
-
-      res.json({ message: 'Atividade deletada' });
-    } catch (error) {
-      console.error('Erro ao deletar atividade:', error);
-      res.status(500).json({ error: 'Erro ao deletar atividade' });
+    if (activity.user_id !== user.id && user.role !== 'admin') {
+      throw new AppError('Você não tem permissão para deletar esta atividade', 403, 'FORBIDDEN');
     }
-  }
 
-  // Limpar histórico de atividades do usuário
-  async clearActivities(req, res) {
-    try {
-      const { user } = req;
+    await activity.destroy();
 
-      await Activity.destroy({
-        where: { user_id: user.id }
-      });
+    logger.info('Atividade deletada', {
+      userId: user.id,
+      activityId: id,
+      type: activity.type
+    });
 
-      res.json({ message: 'Histórico de atividades limpo' });
-    } catch (error) {
-      console.error('Erro ao limpar atividades:', error);
-      res.status(500).json({ error: 'Erro ao limpar atividades' });
-    }
-  }
+    res.json({ message: 'Atividade deletada' });
+  });
 
-  // Deletar todos os dados do usuário (GDPR compliant)
- async deleteAccount  (req, res) {
-  try {
+  clearActivities = catchAsync(async (req, res, next) => {
+    const { user } = req;
+
+    const deletedCount = await Activity.destroy({
+      where: { user_id: user.id }
+    });
+
+    logger.info('Histórico de atividades limpo', {
+      userId: user.id,
+      deletedCount
+    });
+
+    res.json({ message: 'Histórico de atividades limpo', deletedCount });
+  });
+
+  deleteAccount = catchAsync(async (req, res, next) => {
     const { userId } = req;
 
-    // 1. Deletar todas as notificações
-    await Notification.destroy({
-      where: { user_id: userId }
+    const [notificationsDeleted, activitiesDeleted, badgesDeleted, userDeleted] = await Promise.all([
+      Notification.destroy({ where: { user_id: userId } }),
+      Activity.destroy({ where: { user_id: userId } }),
+      UserBadge.destroy({ where: { user_id: userId } }),
+      User.destroy({ where: { id: userId } })
+    ]);
+
+    logger.warn('Conta de usuário deletada (GDPR)', {
+      userId,
+      itemsDeleted: {
+        notifications: notificationsDeleted,
+        activities: activitiesDeleted,
+        badges: badgesDeleted
+      }
     });
 
-    // 2. Deletar todas as atividades
-    await Activity.destroy({
-      where: { user_id: userId }
+    res.json({
+      message: 'Conta deletada com sucesso (GDPR compliant)',
+      deletedItems: {
+        notifications: notificationsDeleted,
+        activities: activitiesDeleted,
+        badges: badgesDeleted
+      }
+    });
+  });
+
+  getActivity = catchAsync(async (req, res, next) => {
+    const { id } = req.params;
+    const { user } = req;
+
+    const activity = await Activity.findByPk(id);
+    if (!activity) {
+      throw new AppError('Atividade não encontrada', 404, 'NOT_FOUND', { resource: 'activity', id });
+    }
+
+    if (activity.user_id !== user.id && user.role !== 'admin') {
+      throw new AppError('Sem permissão para ver esta atividade', 403, 'FORBIDDEN');
+    }
+
+    logger.debug('Atividade recuperada', {
+      userId: user.id,
+      activityId: id
     });
 
-    // 3. Deletar todas as badges
-    await UserBadge.destroy({
-      where: { user_id: userId }
+    res.json({ activity });
+  });
+
+  updateActivity = catchAsync(async (req, res, next) => {
+    const { id } = req.params;
+    const { user } = req;
+    const { description, metadata } = req.body;
+
+    const activity = await Activity.findByPk(id);
+    if (!activity) {
+      throw new AppError('Atividade não encontrada', 404, 'NOT_FOUND', { resource: 'activity', id });
+    }
+
+    if (activity.user_id !== user.id && user.role !== 'admin') {
+      throw new AppError('Sem permissão para atualizar esta atividade', 403, 'FORBIDDEN');
+    }
+
+    if (description) activity.description = description;
+    if (metadata) activity.metadata = metadata;
+
+    await activity.save();
+
+    logger.info('Atividade atualizada', {
+      userId: user.id,
+      activityId: id,
+      type: activity.type
     });
 
-    // 4. Deletar usuário (se desejar)
-    await User.destroy({
-      where: { id: userId }
+    res.json({ activity });
+  });
+
+  getActivitiesByUser = catchAsync(async (req, res, next) => {
+    const { user } = req;
+    const { userId } = req.params;
+    const { limit = 20, offset = 0 } = req.query;
+
+    if (Number(userId) !== user.id && user.role !== 'admin') {
+      throw new AppError('Sem permissão para ver atividades deste usuário', 403, 'FORBIDDEN');
+    }
+
+    const activities = await Activity.findAndCountAll({
+      where: { user_id: userId },
+      order: [['created_at', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
     });
 
-    res.json({ message: 'Conta deletada com sucesso (GDPR compliant)' });
-  } catch (error) {
-    console.error('Erro:', error);
-    res.status(500).json({ error: 'Erro ao deletar conta' });
-  }
-}
+    logger.debug('Atividades de usuário recuperadas', {
+      requestingUserId: user.id,
+      targetUserId: userId,
+      count: activities.rows.length
+    });
+
+    res.json({ activities: activities.rows, total: activities.count });
+  });
+
+  getRecentActivitiesByUser = catchAsync(async (req, res, next) => {
+    const { user } = req;
+    const { userId } = req.params;
+
+    if (Number(userId) !== user.id && user.role !== 'admin') {
+      throw new AppError('Sem permissão para ver atividades deste usuário', 403, 'FORBIDDEN');
+    }
+
+    const activities = await Activity.findAll({
+      where: { user_id: userId },
+      order: [['created_at', 'DESC']],
+      limit: 10
+    });
+
+    logger.debug('Atividades recentes recuperadas', {
+      requestingUserId: user.id,
+      targetUserId: userId,
+      count: activities.length
+    });
+
+    res.json({ activities });
+  });
 
 }
 

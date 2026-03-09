@@ -2,298 +2,255 @@ const { Settings } = require('../models');
 const sharp = require('sharp');
 const path = require('path');
 const fs = require('fs').promises;
+const catchAsync = require('../utils/catchAsync');
+const AppError = require('../utils/AppError');
+const logger = require('../utils/logger');
 
 // Obter todas as configurações
-exports.getAllSettings = async (req, res) => {
-  try {
-    const settings = await Settings.findAll({
-      order: [['category', 'ASC'], ['key', 'ASC']]
-    });
+exports.getAllSettings = catchAsync(async (req, res, next) => {
+  const settings = await Settings.findAll({
+    order: [['category', 'ASC'], ['key', 'ASC']]
+  });
 
-    // Organizar por categoria
-    const organized = settings.reduce((acc, setting) => {
-      if (!acc[setting.category]) {
-        acc[setting.category] = {};
-      }
-      acc[setting.category][setting.key] = {
-        value: setting.value,
-        type: setting.type,
-        description: setting.description
-      };
-      return acc;
-    }, {});
+  // Organizar por categoria
+  const organized = settings.reduce((acc, setting) => {
+    if (!acc[setting.category]) {
+      acc[setting.category] = {};
+    }
+    acc[setting.category][setting.key] = {
+      value: setting.value,
+      type: setting.type,
+      description: setting.description
+    };
+    return acc;
+  }, {});
 
-    res.json({ settings: organized });
-  } catch (error) {
-    console.error('Erro ao buscar configurações:', error);
-    res.status(500).json({ error: 'Erro ao buscar configurações' });
+  logger.debug('Configurações recuperadas', { categoryCount: Object.keys(organized).length });
+
+  res.json({ settings: organized });
+});
+
+// Obter configurações públicas (ex.: para frontend público)
+exports.getPublicSettings = catchAsync(async (req, res, next) => {
+  const defaultSettings = getDefaultSettings();
+  const keys = defaultSettings.map(s => s.key);
+
+  const instances = await Settings.findAll({ where: { key: keys } });
+  const byKey = {};
+  instances.forEach(i => { byKey[i.key] = i; });
+
+  const publicSettings = {};
+  for (const def of defaultSettings) {
+    publicSettings[def.key] = byKey[def.key] ? byKey[def.key].value : def.value;
   }
-};
+
+  logger.debug('Configurações públicas recuperadas');
+  res.json({ settings: publicSettings });
+});
 
 // Obter configuração específica
-exports.getSetting = async (req, res) => {
-  try {
-    const { key } = req.params;
-    const setting = await Settings.findOne({ where: { key } });
+exports.getSetting = catchAsync(async (req, res, next) => {
+  const { key } = req.params;
+  const setting = await Settings.findOne({ where: { key } });
 
-    if (!setting) {
-      return res.status(404).json({ error: 'Configuração não encontrada' });
-    }
-
-    res.json({ setting });
-  } catch (error) {
-    console.error('Erro ao buscar configuração:', error);
-    res.status(500).json({ error: 'Erro ao buscar configuração' });
+  if (!setting) {
+    throw new AppError('Configuração não encontrada', 404, 'NOT_FOUND', { key });
   }
-};
+
+  logger.debug('Configuração recuperada', { key });
+
+  res.json({ setting });
+});
 
 // Atualizar configuração
-exports.updateSetting = async (req, res) => {
-  try {
-    const { key } = req.params;
-    const { value } = req.body;
+exports.updateSetting = catchAsync(async (req, res, next) => {
+  const { key } = req.params;
+  const { value } = req.body;
 
-    let setting = await Settings.findOne({ where: { key } });
+  let setting = await Settings.findOne({ where: { key } });
 
-    if (!setting) {
-      return res.status(404).json({ error: 'Configuração não encontrada' });
-    }
-
-    // Se for imagem, processar upload
-    if (setting.type === 'image' && req.file) {
-      const filename = `${key}-${Date.now()}.webp`;
-      const filepath = path.join('uploads/settings', filename);
-
-      // Criar diretório se não existir
-      await fs.mkdir('uploads/settings', { recursive: true });
-
-      await sharp(req.file.path)
-        .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
-        .webp({ quality: 90 })
-        .toFile(filepath);
-
-      // Deletar imagem antiga
-      if (setting.value && setting.value.startsWith('/uploads/')) {
-        const oldPath = path.join(__dirname, '../..', setting.value);
-        try {
-          await fs.unlink(oldPath);
-        } catch (err) {
-          console.log('Erro ao deletar imagem antiga:', err);
-        }
-      }
-
-      // Deletar arquivo temporário
-      await fs.unlink(req.file.path);
-
-      setting.value = `/uploads/settings/${filename}`;
-    } else {
-      setting.value = value;
-    }
-
-    await setting.save();
-
-    res.json({
-      message: 'Configuração atualizada com sucesso',
-      setting
-    });
-  } catch (error) {
-    console.error('Erro ao atualizar configuração:', error);
-    res.status(500).json({ error: 'Erro ao atualizar configuração' });
+  if (!setting) {
+    throw new AppError('Configuração não encontrada', 404, 'NOT_FOUND', { key });
   }
-};
+
+  // Se for imagem, processar upload
+  if (setting.type === 'image' && req.file) {
+    const filename = `${key}-${Date.now()}.webp`;
+    const filepath = path.join('uploads/settings', filename);
+
+    // Criar diretório se não existir
+    await fs.mkdir('uploads/settings', { recursive: true });
+
+    await sharp(req.file.path)
+      .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 90 })
+      .toFile(filepath);
+
+    // Deletar imagem antiga
+    if (setting.value && setting.value.startsWith('/uploads/')) {
+      const oldPath = path.join(__dirname, '../..', setting.value);
+      try {
+        await fs.unlink(oldPath);
+      } catch (err) {
+        logger.warn('Erro ao deletar imagem antiga:', { key, error: err.message });
+      }
+    }
+
+    // Deletar arquivo temporário
+    await fs.unlink(req.file.path);
+
+    setting.value = `/uploads/settings/${filename}`;
+  } else if (value !== undefined) {
+    setting.value = value;
+  }
+
+  await setting.save();
+
+  logger.info('Configuração atualizada', {
+    adminId: req.user.id,
+    key,
+    type: setting.type
+  });
+
+  res.json({
+    message: 'Configuração atualizada com sucesso',
+    setting
+  });
+});
 
 // Atualizar múltiplas configurações
-exports.updateMultipleSettings = async (req, res) => {
-  try {
-    const { settings } = req.body;
+exports.updateMultipleSettings = catchAsync(async (req, res, next) => {
+  const { settings } = req.body;
 
-    for (const [key, value] of Object.entries(settings)) {
-      const setting = await Settings.findOne({ where: { key } });
-      if (setting) {
-        setting.value = value;
-        await setting.save();
-      }
-    }
-
-    res.json({ message: 'Configurações atualizadas com sucesso' });
-  } catch (error) {
-    console.error('Erro ao atualizar configurações:', error);
-    res.status(500).json({ error: 'Erro ao atualizar configurações' });
+  if (!settings || typeof settings !== 'object') {
+    throw new AppError('Objeto settings é obrigatório', 400, 'MISSING_FIELDS');
   }
-};
+
+  const updatedCount = 0;
+  for (const [key, value] of Object.entries(settings)) {
+    const setting = await Settings.findOne({ where: { key } });
+    if (setting) {
+      setting.value = value;
+      await setting.save();
+      updatedCount++;
+    }
+  }
+
+  logger.info('Múltiplas configurações atualizadas', {
+    adminId: req.user.id,
+    count: updatedCount
+  });
+
+  res.json({
+    message: 'Configurações atualizadas com sucesso',
+    updatedCount
+  });
+});
 
 // Criar configuração
-exports.createSetting = async (req, res) => {
-  try {
-    const { key, value, type, category, description } = req.body;
+exports.createSetting = catchAsync(async (req, res, next) => {
+  const { key, value, type, category, description } = req.body;
 
-    const existingSetting = await Settings.findOne({ where: { key } });
-    if (existingSetting) {
-      return res.status(400).json({ error: 'Configuração já existe' });
-    }
-
-    const setting = await Settings.create({
-      key,
-      value,
-      type: type || 'text',
-      category: category || 'general',
-      description
-    });
-
-    res.status(201).json({
-      message: 'Configuração criada com sucesso',
-      setting
-    });
-  } catch (error) {
-    console.error('Erro ao criar configuração:', error);
-    res.status(500).json({ error: 'Erro ao criar configuração' });
+  if (!key) {
+    throw new AppError('key é obrigatório', 400, 'MISSING_FIELDS');
   }
-};
+
+  const existingSetting = await Settings.findOne({ where: { key } });
+  if (existingSetting) {
+    throw new AppError('Configuração já existe', 409, 'ALREADY_EXISTS', { key });
+  }
+
+  const setting = await Settings.create({
+    key,
+    value,
+    type: type || 'text',
+    category: category || 'general',
+    description
+  });
+
+  logger.info('Configuração criada', {
+    adminId: req.user.id,
+    key,
+    category
+  });
+
+  res.status(201).json({
+    message: 'Configuração criada com sucesso',
+    setting
+  });
+});
 
 // Deletar configuração
-exports.deleteSetting = async (req, res) => {
-  try {
-    const { key } = req.params;
-    const setting = await Settings.findOne({ where: { key } });
+exports.deleteSetting = catchAsync(async (req, res, next) => {
+  const { key } = req.params;
+  const setting = await Settings.findOne({ where: { key } });
 
-    if (!setting) {
-      return res.status(404).json({ error: 'Configuração não encontrada' });
-    }
-
-    // Se for imagem, deletar arquivo
-    if (setting.type === 'image' && setting.value && setting.value.startsWith('/uploads/')) {
-      const filepath = path.join(__dirname, '../..', setting.value);
-      try {
-        await fs.unlink(filepath);
-      } catch (err) {
-        console.log('Erro ao deletar imagem:', err);
-      }
-    }
-
-    await setting.destroy();
-
-    res.json({ message: 'Configuração deletada com sucesso' });
-  } catch (error) {
-    console.error('Erro ao deletar configuração:', error);
-    res.status(500).json({ error: 'Erro ao deletar configuração' });
+  if (!setting) {
+    throw new AppError('Configuração não encontrada', 404, 'NOT_FOUND', { key });
   }
-};
+
+  // Se for imagem, deletar arquivo
+  if (setting.type === 'image' && setting.value && setting.value.startsWith('/uploads/')) {
+    const filepath = path.join(__dirname, '../..', setting.value);
+    try {
+      await fs.unlink(filepath);
+    } catch (err) {
+      logger.warn('Erro ao deletar arquivo de imagem:', { key, error: err.message });
+    }
+  }
+
+  await setting.destroy();
+
+  logger.info('Configuração deletada', {
+    adminId: req.user.id,
+    key
+  });
+
+  res.json({ message: 'Configuração deletada com sucesso' });
+});
 
 // Resetar para padrões
-exports.resetToDefaults = async (req, res) => {
-  try {
-    const defaultSettings = getDefaultSettings();
+exports.resetToDefaults = catchAsync(async (req, res, next) => {
+  const defaultSettings = getDefaultSettings();
 
-    for (const setting of defaultSettings) {
-      const [instance] = await Settings.findOrCreate({
-        where: { key: setting.key },
-        defaults: setting
-      });
-
-      if (instance) {
-        await instance.update({ value: setting.value });
-      }
-    }
-
-    res.json({ message: 'Configurações resetadas para padrão' });
-  } catch (error) {
-    console.error('Erro ao resetar configurações:', error);
-    res.status(500).json({ error: 'Erro ao resetar configurações' });
-  }
-};
-
-// Obter configurações públicas (para o frontend)
-exports.getPublicSettings = async (req, res) => {
-  try {
-    const settings = await Settings.findAll({
-      where: {
-        key: [
-          'site_name',
-          'site_description',
-          'site_logo',
-          'site_favicon',
-          'primary_color',
-          'secondary_color',
-          'enable_registration',
-          'maintenance_mode',
-          'footer_text',
-          'social_facebook',
-          'social_twitter',
-          'social_instagram',
-          'social_discord'
-        ]
-      }
+  for (const setting of defaultSettings) {
+    const [instance] = await Settings.findOrCreate({
+      where: { key: setting.key },
+      defaults: setting
     });
 
-    const publicSettings = settings.reduce((acc, setting) => {
-      acc[setting.key] = setting.value;
-      return acc;
-    }, {});
-
-    res.json({ settings: publicSettings });
-  } catch (error) {
-    console.error('Erro ao buscar configurações públicas:', error);
-    res.status(500).json({ error: 'Erro ao buscar configurações públicas' });
+    if (instance) {
+      await instance.update({ value: setting.value });
+    }
   }
-};
 
-// Configurações padrão
+  logger.info('Configurações resetadas para padrão', {
+    adminId: req.user.id,
+    count: defaultSettings.length
+  });
+
+  res.json({
+    message: 'Configurações resetadas para padrão',
+    resetCount: defaultSettings.length
+  });
+});
+
+// Helper function
 function getDefaultSettings() {
   return [
-    // Geral
-    { key: 'site_name', value: 'MN Studio', type: 'text', category: 'general', description: 'Nome do site' },
-    { key: 'site_description', value: 'Leia mangás e novels online', type: 'textarea', category: 'general', description: 'Descrição do site' },
-    { key: 'site_keywords', value: 'manga, novel, light novel, ler online', type: 'textarea', category: 'general', description: 'Palavras-chave SEO' },
-    { key: 'site_logo', value: '', type: 'image', category: 'general', description: 'Logo do site' },
-    { key: 'site_favicon', value: '', type: 'image', category: 'general', description: 'Favicon do site' },
-    
-    // Aparência
-    { key: 'primary_color', value: '#0ea5e9', type: 'color', category: 'appearance', description: 'Cor primária' },
-    { key: 'secondary_color', value: '#64748b', type: 'color', category: 'appearance', description: 'Cor secundária' },
-    { key: 'dark_mode', value: 'false', type: 'boolean', category: 'appearance', description: 'Modo escuro padrão' },
-    { key: 'custom_css', value: '', type: 'textarea', category: 'appearance', description: 'CSS personalizado' },
-    
-    // Funcionalidades
-    { key: 'enable_registration', value: 'true', type: 'boolean', category: 'features', description: 'Permitir novos cadastros' },
-    { key: 'enable_comments', value: 'true', type: 'boolean', category: 'features', description: 'Permitir comentários' },
-    { key: 'enable_ratings', value: 'true', type: 'boolean', category: 'features', description: 'Permitir avaliações' },
-    { key: 'maintenance_mode', value: 'false', type: 'boolean', category: 'features', description: 'Modo manutenção' },
-    
-    // SEO
-    { key: 'google_analytics', value: '', type: 'text', category: 'seo', description: 'ID do Google Analytics' },
-    { key: 'meta_og_image', value: '', type: 'image', category: 'seo', description: 'Imagem Open Graph padrão' },
-    
-    // Redes Sociais
-    { key: 'social_facebook', value: '', type: 'text', category: 'social', description: 'URL do Facebook' },
-    { key: 'social_twitter', value: '', type: 'text', category: 'social', description: 'URL do Twitter' },
-    { key: 'social_instagram', value: '', type: 'text', category: 'social', description: 'URL do Instagram' },
-    { key: 'social_discord', value: '', type: 'text', category: 'social', description: 'URL do Discord' },
-    
-    // Email
-    { key: 'contact_email', value: '', type: 'text', category: 'email', description: 'Email de contato' },
-    { key: 'smtp_host', value: '', type: 'text', category: 'email', description: 'Servidor SMTP' },
-    { key: 'smtp_port', value: '587', type: 'number', category: 'email', description: 'Porta SMTP' },
-    { key: 'smtp_user', value: '', type: 'text', category: 'email', description: 'Usuário SMTP' },
-    { key: 'smtp_password', value: '', type: 'text', category: 'email', description: 'Senha SMTP' },
-    
-    // Footer
-    { key: 'footer_text', value: 'Todos os direitos reservados', type: 'textarea', category: 'footer', description: 'Texto do rodapé' },
-    { key: 'footer_links', value: '[]', type: 'json', category: 'footer', description: 'Links do rodapé' },
-    
-    // Avançado
-    { key: 'max_upload_size', value: '10', type: 'number', category: 'advanced', description: 'Tamanho máximo de upload (MB)' },
-    { key: 'items_per_page', value: '20', type: 'number', category: 'advanced', description: 'Itens por página' },
-    { key: 'cache_enabled', value: 'true', type: 'boolean', category: 'advanced', description: 'Habilitar cache' }
+    {
+      key: 'site_name',
+      value: 'MN Studio',
+      type: 'text',
+      category: 'general',
+      description: 'Nome do site'
+    },
+    {
+      key: 'site_description',
+      value: 'Seu destino para mangás e novels',
+      type: 'text',
+      category: 'general',
+      description: 'Descrição do site'
+    }
   ];
 }
-
-module.exports = {
-  getAllSettings: exports.getAllSettings,
-  getSetting: exports.getSetting,
-  updateSetting: exports.updateSetting,
-  updateMultipleSettings: exports.updateMultipleSettings,
-  createSetting: exports.createSetting,
-  deleteSetting: exports.deleteSetting,
-  resetToDefaults: exports.resetToDefaults,
-  getPublicSettings: exports.getPublicSettings
-};

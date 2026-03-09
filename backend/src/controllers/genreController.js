@@ -1,48 +1,59 @@
 const { Genre } = require('../models');
+const catchAsync = require('../utils/catchAsync');
+const AppError = require('../utils/AppError');
+const logger = require('../utils/logger');
 
-exports.createGenre = async (req, res) => {
-  try {
-    const { name } = req.body;
+exports.createGenre = catchAsync(async (req, res, next) => {
+  const { name } = req.body;
 
-    const genre = await Genre.create({ name });
-
-    res.status(201).json({
-      message: 'Gênero criado com sucesso',
-      genre
-    });
-  } catch (error) {
-    console.error('Erro ao criar gênero:', error);
-    res.status(500).json({ error: 'Erro ao criar gênero' });
+  if (!name) {
+    throw new AppError('Nome é obrigatório', 400, 'MISSING_FIELDS');
   }
-};
 
-exports.getAllGenres = async (req, res) => {
-  try {
-    const genres = await Genre.findAll({
-      order: [['name', 'ASC']]
-    });
-
-    res.json({ genres });
-  } catch (error) {
-    console.error('Erro ao buscar gêneros:', error);
-    res.status(500).json({ error: 'Erro ao buscar gêneros' });
+  const existingGenre = await Genre.findOne({ where: { name } });
+  if (existingGenre) {
+    throw new AppError('Gênero já existe', 409, 'ALREADY_EXISTS', { name });
   }
-};
 
-exports.deleteGenre = async (req, res) => {
-  try {
-    const { id } = req.params;
+  const genre = await Genre.create({ name });
 
-    const genre = await Genre.findByPk(id);
-    if (!genre) {
-      return res.status(404).json({ error: 'Gênero não encontrado' });
-    }
+  logger.info('Gênero criado', {
+    adminId: req.user.id,
+    genreId: genre.id,
+    genreName: name
+  });
 
-    await genre.destroy();
+  res.status(201).json({
+    message: 'Gênero criado com sucesso',
+    genre
+  });
+});
 
-    res.json({ message: 'Gênero deletado com sucesso' });
-  } catch (error) {
-    console.error('Erro ao deletar gênero:', error);
-    res.status(500).json({ error: 'Erro ao deletar gênero' });
+exports.getAllGenres = catchAsync(async (req, res, next) => {
+  const genres = await Genre.findAll({
+    order: [['name', 'ASC']]
+  });
+
+  logger.debug('Gêneros recuperados', { count: genres.length });
+
+  res.json({ genres });
+});
+
+exports.deleteGenre = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+
+  const genre = await Genre.findByPk(id);
+  if (!genre) {
+    throw new AppError('Gênero não encontrado', 404, 'NOT_FOUND', { resource: 'genre', id });
   }
-};
+
+  await genre.destroy();
+
+  logger.info('Gênero deletado', {
+    adminId: req.user.id,
+    genreId: id,
+    genreName: genre.name
+  });
+
+  res.json({ message: 'Gênero deletado com sucesso' });
+});

@@ -5,88 +5,70 @@ const {
 } = require('../models');
 
 const { Sequelize } = require('sequelize');
+const catchAsync = require('../utils/catchAsync');
+const AppError = require('../utils/AppError');
+const logger = require('../utils/logger');
 
-exports.getMyStats = async (req, res) => {
-  try {
-    const userId = req.user.id;
+exports.getMyStats = catchAsync(async (req, res, next) => {
+  const userId = req.user.id;
 
-    // Favoritos (total)
-    const favoritesCount = await Favorite.count({
-      where: { user_id: userId }
-    });
-
-    // Capítulos lidos (total)
-    const completedTotal = await ReadingHistory.count({
-      where: { user_id: userId }
-    });
-
-    // Leituras ativas (conteúdos únicos - total)
-    const activeTotal = await ReadingHistory.count({
+  // Buscar stats em paralelo
+  const [
+    favoritesCount,
+    completedTotal,
+    activeTotal,
+    mangaCompleted,
+    mangaActive,
+    novelCompleted,
+    novelActive,
+    user
+  ] = await Promise.all([
+    Favorite.count({ where: { user_id: userId } }),
+    ReadingHistory.count({ where: { user_id: userId } }),
+    ReadingHistory.count({
       where: { user_id: userId },
       distinct: true,
       col: 'content_id'
-    });
-
-    // === MANGA ===
-    const mangaCompleted = await ReadingHistory.count({
-      where: {
-        user_id: userId,
-        content_type: 'manga'
-      }
-    });
-
-    const mangaActive = await ReadingHistory.count({
-      where: {
-        user_id: userId,
-        content_type: 'manga'
-      },
+    }),
+    ReadingHistory.count({
+      where: { user_id: userId, content_type: 'manga' }
+    }),
+    ReadingHistory.count({
+      where: { user_id: userId, content_type: 'manga' },
       distinct: true,
       col: 'content_id'
-    });
-
-    // === NOVEL ===
-    const novelCompleted = await ReadingHistory.count({
-      where: {
-        user_id: userId,
-        content_type: 'novel'
-      }
-    });
-
-    const novelActive = await ReadingHistory.count({
-      where: {
-        user_id: userId,
-        content_type: 'novel'
-      },
+    }),
+    ReadingHistory.count({
+      where: { user_id: userId, content_type: 'novel' }
+    }),
+    ReadingHistory.count({
+      where: { user_id: userId, content_type: 'novel' },
       distinct: true,
       col: 'content_id'
-    });
+    }),
+    User.findByPk(userId, { attributes: ['created_at'] })
+  ]);
 
-    // Data de criação
-    const user = await User.findByPk(userId, {
-      attributes: ['created_at']
-    });
+  logger.debug('User stats retrieved', {
+    userId,
+    favorites: favoritesCount,
+    activeReadings: activeTotal
+  });
 
-    return res.json({
-      total: {
-        favorites: favoritesCount,
-        completed_chapters: completedTotal,
-        active_readings: activeTotal
-      },
-      manga: {
-        completed_chapters: mangaCompleted,
-        active_readings: mangaActive
-      },
-      novel: {
-        completed_chapters: novelCompleted,
-        active_readings: novelActive
-      },
-      created_at: user?.created_at
-    });
-
-  } catch (error) {
-    console.error('Erro ao buscar stats do usuário:', error);
-    return res.status(500).json({
-      error: 'Erro ao buscar estatísticas do usuário'
-    });
-  }
-};
+  res.json({
+    total: {
+      favorites: favoritesCount,
+      completed_chapters: completedTotal,
+      active_readings: activeTotal
+    },
+    manga: {
+      completed_chapters: mangaCompleted,
+      active_readings: mangaActive
+    },
+    novel: {
+      completed_chapters: novelCompleted,
+      active_readings: novelActive
+    },
+    created_at: user?.created_at
+  });
+});

@@ -123,3 +123,7 @@
 .hero-slider .swiper-pagination-bullet-active {
   opacity: 1;
 }
+
+#webtoon-container {
+  scroll-behavior: smooth;
+}

@@ -1,0 +1,53 @@
+﻿{
+    "mangas":  [
+                   {
+                       "id":  9,
+                       "title":  "Futanari Bitch Gal wa Suki desu ka",
+                       "alternative_titles":  [
+
+                                              ],
+                       "description":  "Futanari Bitch Gal wa Suki desu ka",
+                       "cover_image":  "/uploads/manga/1768970376778-445838079.jpg",
+                       "author":  "Nobuhiro",
+                       "artist":  "Nobuhiro",
+                       "status":  "ongoing",
+                       "type":  "manga",
+                       "uploaded_by":  1,
+                       "views":  28,
+                       "rating":  "0.00",
+                       "created_at":  "2026-01-21T04:39:36.792Z",
+                       "updated_at":  "2026-01-23T04:31:16.960Z",
+                       "genres":  [
+                                      {
+                                          "id":  31,
+                                          "name":  "Maduro",
+                                          "manga_genres":  {
+                                                               "created_at":  "2026-01-21T04:39:36.815Z",
+                                                               "updated_at":  "2026-01-21T04:39:36.815Z",
+                                                               "manga_id":  9,
+                                                               "genre_id":  31
+                                                           }
+                                      },
+                                      {
+                                          "id":  34,
+                                          "name":  "Futanari",
+                                          "manga_genres":  {
+                                                               "created_at":  "2026-01-21T04:39:36.815Z",
+                                                               "updated_at":  "2026-01-21T04:39:36.815Z",
+                                                               "manga_id":  9,
+                                                               "genre_id":  34
+                                                           }
+                                      }
+                                  ],
+                       "uploader":  {
+                                        "id":  1,
+                                        "username":  "Danilo"
+                                    }
+                   }
+               ],
+    "pagination":  {
+                       "total":  9,
+                       "page":  1,
+                       "pages":  9
+                   }
+}
