@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import {
   User, Mail, Lock, Camera, Settings, Shield,
   CreditCard, Monitor, Download, Trash2, LogOut,
   Smartphone, Globe, Bell, CheckCircle, XCircle,
-  Key, QrCode, ShieldCheck, Activity, Edit, Eye
+  Key, QrCode, ShieldCheck, Activity, Edit, Eye, Heart, BookOpen as BookOpenIcon
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
@@ -15,10 +15,10 @@ import { ROLE_LABELS } from '../utils/constants';
 import { statsService } from '../services/statsService';
 import { activityService } from '../services/activityService';
 import { badgeService } from '../services/userEnhancementService';
+import { favoriteService } from '../services/favoriteService';
 import Card from '../components/common/Card';
 import Input from '../components/common/Input';
 import Button from '../components/common/Button';
-import { use } from 'react';
 
 // 🔧 MOVER Componente de Confirmação para ANTES do componente principal
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Confirmar", danger = false }) => {
@@ -84,6 +84,9 @@ const Profile = () => {
     theme: 'light'
   });
   const [socialConnections, setSocialConnections] = useState([]);
+  const [favorites, setFavorites] = useState({ mangas: [], novels: [] });
+  const [favoritesLoading, setFavoritesLoading] = useState(false);
+  const [favoriteTab, setFavoriteTab] = useState('all');
   const [subscription, setSubscription] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -184,6 +187,23 @@ const Profile = () => {
     }
   }, [user?.id]);
 
+  useEffect(() => {
+    if (user?.id !== undefined) {
+      async function loadFavorites() {
+        try {
+          setFavoritesLoading(true);
+          const data = await favoriteService.getUserFavorites();
+          setFavorites(data?.favorites || { mangas: [], novels: [] });
+        } catch (err) {
+          console.error('Erro ao carregar favoritos:', err);
+        } finally {
+          setFavoritesLoading(false);
+        }
+      }
+
+      loadFavorites();
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     if (user?.bio !== undefined) {
@@ -511,7 +531,7 @@ const Profile = () => {
   // Componente de Visualização Pública do Perfil
   const PublicProfileView = () => (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2">
+      <div className="lg:col-span-2 space-y-6">
         <Card className="overflow-hidden">
           {/* Banner */}
           {user?.banner_url ? (
@@ -620,36 +640,11 @@ const Profile = () => {
         </Card>
       </div>
 
-      {/* blocos abaixo do componente de Visualização Pública do Perfil */}
-
-      {/* Favoritos recentes */}
-      <div className="space-y-6">
-        <Card className="p-6">
-          <h3 className="font-semibold text-lg mb-4 text-gray-900 dark:text-white">Favoritos Recentes</h3>
-          <div className="space-y-3">
-            {stats?.recent_favorites?.length === 0 && (
-              <p className="text-gray-600 dark:text-gray-400">Nenhum favorito recente.</p>
-            )}
-            {stats?.recent_favorites?.map((item) => (
-              <div key={item.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                  <Heart className="w-4 h-4 text-primary-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium">{item.title}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{item.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      <div className="space-y-6">
+      {/* Atividade e Conquistas */}
+      <div className="lg:col-span-1 space-y-6">
         <Card className="p-6">
           <h3 className="font-semibold text-lg mb-4 text-gray-900 dark:text-white">Atividade Recente</h3>
           <div className="space-y-3">
-
             {activity.length === 0 && (
               <p className="text-gray-600 dark:text-gray-400">Nenhuma atividade recente.</p>
             )}
@@ -670,7 +665,6 @@ const Profile = () => {
         <Card className="p-6">
           <h3 className="font-semibold text-lg mb-4 text-gray-900 dark:text-white">Conquistas</h3>
           <div className="grid grid-cols-3 gap-3">
-
             {achievements.length === 0 && (
               <p className="text-gray-600 dark:text-gray-400">Nenhuma conquista conquistada.</p>
             )}
@@ -682,30 +676,98 @@ const Profile = () => {
                 <span className="text-xs font-medium">{item.title}</span>
               </div>
             ))}
-
-            {/* Exemplos de conquistas estáticas */}
             <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/10 rounded-lg">
-              <div className="w-10 h-10 mx-auto bg-yellow-100 rounded-full flex items-center justify-center text-yellow-600 text-lg mb-1">
-                👤
-              </div>
+              <div className="w-10 h-10 mx-auto bg-yellow-100 rounded-full flex items-center justify-center text-yellow-600 text-lg mb-1">👤</div>
               <span className="text-xs font-medium">Perfil</span>
             </div>
             <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/10 rounded-lg">
-              <div className="w-10 h-10 mx-auto bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-lg mb-1">
-                🔐
-              </div>
+              <div className="w-10 h-10 mx-auto bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-lg mb-1">🔐</div>
               <span className="text-xs font-medium">Seguro</span>
             </div>
             <div className="text-center p-3 bg-green-50 dark:bg-green-900/10 rounded-lg">
-              <div className="w-10 h-10 mx-auto bg-green-100 rounded-full flex items-center justify-center text-green-600 text-lg mb-1">
-                ⭐
-              </div>
+              <div className="w-10 h-10 mx-auto bg-green-100 rounded-full flex items-center justify-center text-green-600 text-lg mb-1">⭐</div>
               <span className="text-xs font-medium">Ativo</span>
             </div>
           </div>
         </Card>
       </div>
+
+      {/* blocos abaixo do componente de Visualização Pública do Perfil */}
+      <div className="lg:col-span-3 space-y-6">
+        {/* Favoritos recentes */}
+        <div>
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-lg text-gray-900 dark:text-white">Favoritos Recentes</h3>
+            <div className="flex gap-2 text-sm">
+              {['all', 'manga', 'novel'].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setFavoriteTab(tab)}
+                  className={`px-3 py-1 rounded-full font-medium transition ${
+                    favoriteTab === tab
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  {tab === 'all' ? 'Todos' : tab === 'manga' ? 'Mangás' : 'Novels'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {favoritesLoading ? (
+            <p className="text-gray-600 dark:text-gray-400">Carregando favoritos...</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {(favoriteTab === 'all'
+                ? [...favorites.mangas, ...favorites.novels]
+                : favoriteTab === 'manga'
+                ? favorites.mangas
+                : favorites.novels
+              )
+                .slice(0, 8)
+                .map((item) => (
+                  <div key={`${item.id}-${item.type || (favorites.mangas.find((m) => m.id===item.id) ? 'manga' : 'novel')}`} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700">
+                      <img
+                        src={getImageUrl(item.cover_image)}
+                        alt={item.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.src = 'https://via.placeholder.com/80x80?text=No+Image';
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{item.title}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {item.type ? item.type : favorites.mangas.some((m) => m.id === item.id) ? 'Mangá' : 'Novel'}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+
+              {((favoriteTab === 'all' && [...favorites.mangas, ...favorites.novels].length === 0) ||
+                (favoriteTab === 'manga' && favorites.mangas.length === 0) ||
+                (favoriteTab === 'novel' && favorites.novels.length === 0)) && (
+                <p className="text-gray-600 dark:text-gray-400">Nenhum item encontrado em {favoriteTab === 'all' ? 'favoritos' : favoriteTab}.</p>
+              )}
+            </div>
+          )}
+
+          <div className="mt-4 text-right">
+            <Link to="/favorites" className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 text-sm font-medium">
+              Ver tudo
+            </Link>
+          </div>
+        </Card>
+      </div>
+
     </div>
+  </div>
+
+
   );
 
   // Componente de Upload de Avatar com Drag & Drop (apenas no modo edição)
@@ -826,7 +888,79 @@ const Profile = () => {
                             <p className="text-sm text-blue-700 dark:text-blue-400">Você pode fazer login usando sua conta Google</p>
                           </div>
                         </div>
-                      )}
+                      )} 
+
+                      {/* Informações Básicas */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Input
+                          label="Nome de usuário"
+                          icon={User}
+                          error={errorsProfile.username?.message}
+                          {...registerProfile('username', {
+                            required: 'Nome de usuário é obrigatório',
+                            minLength: {
+                              value: 3,
+                              message: 'Nome deve ter no mínimo 3 caracteres'
+                            }
+                          })}
+                        />
+
+                        <Input
+                          label="Email"
+                          type="email"
+                          icon={Mail}
+                          error={errorsProfile.email?.message}
+                          {...registerProfile('email', {
+                            required: 'Email é obrigatório',
+                            pattern: {
+                              value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                              message: 'Email inválido'
+                            }
+                          })}
+                        />
+                      </div>
+
+                      {/* Avatar Upload */}
+                      <div className="flex gap-6 items-start">
+                        <AvatarUploadWithDrop />
+
+                          {(avatarPreview || user?.avatar_url) && (
+                          <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <div className="relative">
+                              <div className="w-40 h-40 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 border-2 border-white dark:border-gray-800 shadow-sm">
+                                <img
+                                  src={avatarPreview || getImageUrl(user.avatar_url)}
+                                  alt="Avatar preview"
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                {avatarFile ? 'Nova imagem selecionada' : ''}
+                              </p>
+
+                              {avatarFile && (
+                                <p className="text-sm text-green-600 dark:text-green-400">
+                                  ✅ {avatarFile.name} ({(avatarFile.size / 1024 / 1024).toFixed(2)} MB)
+                                </p>
+                              )}
+                            </div>
+
+                            {avatarFile && (
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                onClick={handleRemoveAvatar}
+                              >
+                                Remover
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </div>
 
                       {/* Banner Upload */}
                       <div>
@@ -907,78 +1041,7 @@ const Profile = () => {
                         </p>
                       </div>
 
-                      {/* Avatar Upload */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                          Foto do Perfil
-                        </label>
-                        <AvatarUploadWithDrop />
 
-                        {/* Preview do Avatar */}
-                        {(avatarPreview || user?.avatar_url) && (
-                          <div className="flex items-center gap-4 mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <div className="relative">
-                              <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 border-2 border-white dark:border-gray-800 shadow-sm">
-                                <img
-                                  src={avatarPreview || getImageUrl(user.avatar_url)}
-                                  alt="Avatar preview"
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                {avatarFile ? 'Nova imagem selecionada' : 'Imagem atual'}
-                              </p>
-                              {avatarFile && (
-                                <p className="text-sm text-green-600 dark:text-green-400">
-                                  ✅ {avatarFile.name} ({(avatarFile.size / 1024 / 1024).toFixed(2)} MB)
-                                </p>
-                              )}
-                            </div>
-                            {avatarFile && (
-                              <Button
-                                type="button"
-                                variant="secondary"
-                                size="sm"
-                                onClick={handleRemoveAvatar}
-                              >
-                                Remover
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Informações Básicas */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Input
-                          label="Nome de usuário"
-                          icon={User}
-                          error={errorsProfile.username?.message}
-                          {...registerProfile('username', {
-                            required: 'Nome de usuário é obrigatório',
-                            minLength: {
-                              value: 3,
-                              message: 'Nome deve ter no mínimo 3 caracteres'
-                            }
-                          })}
-                        />
-
-                        <Input
-                          label="Email"
-                          type="email"
-                          icon={Mail}
-                          error={errorsProfile.email?.message}
-                          {...registerProfile('email', {
-                            required: 'Email é obrigatório',
-                            pattern: {
-                              value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                              message: 'Email inválido'
-                            }
-                          })}
-                        />
-                      </div>
 
                       <div className="flex justify-end gap-3 pt-4 border-t">
                         <Button

@@ -84,11 +84,15 @@ const Login = () => {
   }, []);
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left Side - Form */}
-      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-800">
-        <div className="w-full max-w-md space-y-8">
-          {/* Logo */}
+    <div className="relative min-h-screen bg-gray-900 pb-20">
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: "url('/src/assets/login-bg.jpg')" }}
+      />
+      <div className="absolute inset-0 bg-black/60" />
+
+      <div className="relative z-10 flex min-h-screen flex-col items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md space-y-8 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-gray-200 dark:border-gray-700">
           <div className="text-center">
             <Link to="/" className="inline-flex items-center gap-2 mb-6">
               <div className="p-3 bg-primary-600 rounded-2xl dark:bg-primary-500">
@@ -96,15 +100,10 @@ const Login = () => {
               </div>
               <span className="text-2xl font-bold text-gray-900 dark:text-white">MN Studio</span>
             </Link>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2 dark:text-white">
-              Bem-vindo de volta
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400">
-              Entre para continuar sua jornada de leitura
-            </p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2 dark:text-white">Bem-vindo de volta</h2>
+            <p className="text-gray-600 dark:text-gray-400">Entre para continuar sua jornada de leitura</p>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-6">
             <div className="space-y-4">
               {/* Email */}
@@ -230,55 +229,44 @@ const Login = () => {
         </div>
       </div>
 
-      {/* Right Side - Image/Illustration */}
-      <div className="hidden lg:block lg:flex-1 relative bg-gradient-to-br from-primary-600 to-primary-800 dark:from-primary-500 dark:to-primary-700 overflow-hidden">
-        <div className="absolute inset-0 flex items-center justify-center p-12">
-          <div className="max-w-lg text-white dark:text-gray-200">
-            <h2 className="text-4xl font-bold mb-6">
-              Sua biblioteca de mangás e novels
-            </h2>
-            <p className="text-xl text-primary-100 mb-8 dark:text-gray-300">
-              Acesse milhares de títulos, acompanhe seu progresso de leitura e descubra novas histórias incríveis.
-            </p>
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center dark:bg-gray-700">
-                  <BookOpen className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-semibold mb-1">Conteúdo atualizado</h3>
-                  <p className="text-primary-100 text-sm dark:text-gray-300">Novos capítulos adicionados diariamente</p>
-                </div>
+      <div className="relative z-10 mt-10 w-full max-w-4xl px-4 mx-auto">
+        <div className="rounded-3xl bg-white/90 dark:bg-gray-900/80 p-8 border border-gray-200 dark:border-gray-700 shadow-xl backdrop-blur-xl">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Sua biblioteca de mangás e novels</h2>
+          <p className="text-gray-700 dark:text-gray-300 mb-6">Acesse milhares de títulos, acompanhe seu progresso de leitura e descubra novas histórias incríveis.</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex gap-3">
+              <div className="w-8 h-8 rounded-lg bg-primary-600/20 text-primary-600 flex items-center justify-center">
+                <BookOpen className="w-4 h-4" />
               </div>
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center dark:bg-gray-700">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-semibold mb-1">Totalmente gratuito</h3>
-                  <p className="text-primary-100 text-sm dark:text-gray-300">Sem taxas ou assinaturas</p>
-                </div>
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-white">Conteúdo atualizado</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Novos capítulos adicionados diariamente</p>
               </div>
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center dark:bg-gray-700">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-semibold mb-1">Continue de onde parou</h3>
-                  <p className="text-primary-100 text-sm dark:text-gray-300">Histórico de leitura sincronizado</p>
-                </div>
+            </div>
+            <div className="flex gap-3">
+              <div className="w-8 h-8 rounded-lg bg-primary-600/20 text-primary-600 flex items-center justify-center">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-white">Totalmente gratuito</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Sem taxas ou assinaturas</p>
+              </div>
+            </div>
+            <div className="sm:col-span-2 flex gap-3">
+              <div className="w-8 h-8 rounded-lg bg-primary-600/20 text-primary-600 flex items-center justify-center">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-white">Continue de onde parou</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Histórico de leitura sincronizado</p>
               </div>
             </div>
           </div>
         </div>
-        
-        {/* Decorative elements */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl dark:bg-white/5"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-white/10 rounded-full blur-3xl dark:bg-white/5"></div>
       </div>
     </div>
   );

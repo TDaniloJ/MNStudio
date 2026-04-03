@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   BookOpen, 
@@ -22,6 +22,7 @@ import toast from 'react-hot-toast';
 import { useMangaStore } from '../store/mangaStore';
 import { ratingService } from '../services/ratingService';
 import { favoriteService } from '../services/favoriteService';
+import { readingHistoryService } from '../services/readingHistoryService';
 import { useAuthStore } from '../store/authStore';
 import { getImageUrl, formatDate, formatNumber } from '../utils/formatters';
 import Button from '../components/common/Button';
@@ -39,46 +40,20 @@ const MangaDetail = () => {
   const [sortOrder, setSortOrder] = useState('asc');
   const [userRating, setUserRating] = useState(0);
   const [ratingLoading, setRatingLoading] = useState(false);
+  const [lastReadHistory, setLastReadHistory] = useState(null);
+  const [lastUpdatedInfo, setLastUpdatedInfo] = useState('');
 
-  useEffect(() => {
-    loadManga();
-    return () => clearCurrentManga();
-  }, [id]);
+  const sortedChapters = useMemo(() => {
+    const chapters = Array.isArray(currentManga?.chapters) ? currentManga.chapters : [];
+    return [...chapters].sort((a, b) => {
+      const aNum = Number(a.chapter_number || a.number || a.index || 0);
+      const bNum = Number(b.chapter_number || b.number || b.index || 0);
+      if (Number.isNaN(aNum) || Number.isNaN(bNum)) return 0;
+      return sortOrder === 'asc' ? aNum - bNum : bNum - aNum;
+    });
+  }, [currentManga?.chapters, sortOrder]);
 
-  useEffect(() => {
-    // carregar rating do usuário (se autenticado) e ratings gerais
-    const loadRatings = async () => {
-      if (!currentManga) return;
-      try {
-        const res = await ratingService.getRatings('manga', currentManga.id);
-        if (res.ratings && res.ratings.length > 0) {
-          // obter rating do usuário atual
-          const me = res.ratings.find(r => r.user_id === (user?.id || 0));
-          if (me) setUserRating(me.score);
-        }
-      } catch (e) {
-        // ignore - endpoint may require auth for user-specific info
-      }
-    };
-    loadRatings();
-  }, [currentManga]);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const checkFavoriteStatus = async () => {
-      if (isAuthenticated && currentManga) {
-        try {
-          const data = await favoriteService.getUserFavorites('manga');
-          const isFav = data.favorites?.mangas?.some(m => m.id === currentManga.id);
-          setIsFavorite(isFav || false);
-        } catch (error) {
-          console.error('Erro ao verificar favorito:', error);
-        }
-      }
-    };
-    checkFavoriteStatus();
-  }, [isAuthenticated, currentManga]);
+  const imageUrl = getImageUrl(currentManga?.cover_image);
 
   const loadManga = async () => {
     try {
@@ -88,6 +63,11 @@ const MangaDetail = () => {
       navigate('/mangas');
     }
   };
+
+  useEffect(() => {
+    loadManga();
+    return () => clearCurrentManga();
+  }, [id]);
 
   const handleFavorite = async () => {
     if (!isAuthenticated) {
@@ -131,14 +111,6 @@ const MangaDetail = () => {
     return <Loading fullScreen />;
   }
 
-  const sortedChapters = [...(currentManga.chapters || [])].sort((a, b) => {
-    const aNum = parseFloat(a.chapter_number);
-    const bNum = parseFloat(b.chapter_number);
-    return sortOrder === 'asc' ? aNum - bNum : bNum - aNum;
-  });
-
-  const imageUrl = getImageUrl(currentManga.cover_image);
-
   const getStatusIcon = () => {
     switch (currentManga.status) {
       case 'ongoing': return <Play className="w-4 h-4" />;
@@ -164,6 +136,19 @@ const MangaDetail = () => {
       case 'hiatus': return 'Em Hiato';
       default: return 'Desconhecido';
     }
+  };
+
+  const getRelativeTime = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const diffMs = Date.now() - date.getTime();
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    if (diffMinutes < 1) return 'agora mesmo';
+    if (diffMinutes < 60) return `há ${diffMinutes} min`;
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `há ${diffHours} h`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `há ${diffDays} dia${diffDays > 1 ? 's' : ''}`;
   };
 
   // ✅ Função para obter imagem do capítulo
@@ -266,6 +251,14 @@ const MangaDetail = () => {
                     </span>
                   ) : null;
                 })()}
+
+                {lastUpdatedInfo && (
+                  <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full text-white/80 text-sm border border-white/20">
+                    <CalendarDays className="w-4 h-4" />
+                    Atualizado {lastUpdatedInfo}
+                  </span>
+                )}
+
                 {/* Rating UI */}
                 <div className="ml-3 flex items-center gap-1">
                   {[1,2,3,4,5].map((s) => (
@@ -357,6 +350,16 @@ const MangaDetail = () => {
                     </Button>
                   </Link>
                 )}
+
+                {lastReadHistory?.current_chapter && (
+                  <Link to={`/manga/${currentManga.id}/chapter/${lastReadHistory.current_chapter.id}`}>
+                    <Button size="lg" className="bg-green-600 hover:bg-green-700">
+                      <Play className="w-5 h-5 mr-2" />
+                      Continuar cap. {Math.trunc(Number(lastReadHistory.current_chapter.chapter_number || 0))}
+                    </Button>
+                  </Link>
+                )}
+
                 <Button
                   variant={isFavorite ? 'danger' : 'secondary'}
                   size="lg"

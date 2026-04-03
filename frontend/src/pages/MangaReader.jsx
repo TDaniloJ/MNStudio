@@ -92,6 +92,7 @@ const MangaReader = () => {
   const [showNextConfirm, setShowNextConfirm] = useState(false);
   const [nextChapterTarget, setNextChapterTarget] = useState(null);
   const [showEndModal, setShowEndModal] = useState(false);
+  const [showContinuousEndModal, setShowContinuousEndModal] = useState(false);
 
   useEffect(() => {
     if (readingMode !== 'continuous') return;
@@ -102,6 +103,7 @@ const MangaReader = () => {
     const onScroll = () => {
       const images = container.querySelectorAll('img[data-page-index]');
       let visiblePage = 0;
+      let isAtBottom = false;
 
       images.forEach((img) => {
         const rect = img.getBoundingClientRect();
@@ -110,12 +112,36 @@ const MangaReader = () => {
         }
       });
 
+      // Check if user is at the bottom of the last page
+      if (images.length > 0) {
+        const lastImage = images[images.length - 1];
+        const rect = lastImage.getBoundingClientRect();
+        isAtBottom = rect.bottom <= window.innerHeight + 50; // 50px tolerance
+      }
+
       setCurrentPage(visiblePage);
+
+      // Handle end of chapter in continuous mode
+      if (isAtBottom && pages && pages.length > 0 && visiblePage >= pages.length - 1) {
+        const hasNextChapter = chapters && currentChapterIndex >= 0 && currentChapterIndex < chapters.length - 1;
+        if (hasNextChapter) {
+          const nextChapter = chapters[currentChapterIndex + 1];
+          if (autoAdvance) {
+            navigate(`/manga/${mangaId}/chapter/${nextChapter.id}`);
+          } else {
+            setNextChapterTarget(nextChapter.id);
+            setShowContinuousEndModal(true);
+          }
+        } else {
+          // No more chapters, show end modal
+          setShowContinuousEndModal(true);
+        }
+      }
     };
 
     container.addEventListener('scroll', onScroll);
     return () => container.removeEventListener('scroll', onScroll);
-  }, [readingMode, pages]);
+  }, [readingMode, pages, chapters, currentChapterIndex, autoAdvance, navigate, mangaId]);
 
 
   useEffect(() => {
@@ -139,7 +165,6 @@ const MangaReader = () => {
     }
   }, [currentPage, pages, preloadPages]);
 
-  // ✅ ATUALIZE A FUNÇÃO loadChapter
   const loadChapter = async () => {
     try {
       setLoading(true);
@@ -408,6 +433,40 @@ const MangaReader = () => {
         </div>
       </Modal>
 
+      {/* Continuous Mode End Modal */}
+      <Modal
+        isOpen={showContinuousEndModal}
+        onClose={() => setShowContinuousEndModal(false)}
+        title={chapters && currentChapterIndex >= 0 && currentChapterIndex < chapters.length - 1 ? "Próximo capítulo disponível" : "Fim dos capítulos"}
+        size="sm"
+      >
+        <p className="mb-4">
+          {chapters && currentChapterIndex >= 0 && currentChapterIndex < chapters.length - 1
+            ? "Você chegou ao fim deste capítulo. Deseja continuar para o próximo?"
+            : "Você chegou ao fim dos capítulos deste mangá."
+          }
+        </p>
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setShowContinuousEndModal(false);
+              navigate(`/manga/${mangaId}`);
+            }}
+          >
+            Voltar para detalhes
+          </Button>
+          {chapters && currentChapterIndex >= 0 && currentChapterIndex < chapters.length - 1 && (
+            <Button onClick={() => {
+              setShowContinuousEndModal(false);
+              if (nextChapterTarget) navigate(`/manga/${mangaId}/chapter/${nextChapterTarget}`);
+            }}>
+              Próximo capítulo
+            </Button>
+          )}
+        </div>
+      </Modal>
+
       {/* Top Controls */}
       <div 
         className={`fixed top-0 left-0 right-0 bg-gradient-to-b from-black/90 to-transparent p-4 z-50 transition-all duration-300 ${
@@ -456,7 +515,12 @@ const MangaReader = () => {
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => setShowSettings(!showSettings)}
+              onClick={() => {
+                setShowSettings(!showSettings);
+                if (!showSettings) {
+                  setShowControls(false);
+                }
+              }}
               className="bg-white/10 hover:bg-white/20 text-white border-0"
             >
               <Settings className="w-4 h-4" />
@@ -467,11 +531,15 @@ const MangaReader = () => {
 
       {/* Settings Panel */}
       {showSettings && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 dark:bg-gray-900/50 ">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[80vh] overflow-y-auto p-2 dark:bg-gray-800">
-            <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white dark:bg-gray-800">
+        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 dark:bg-gray-900/50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[80vh] overflow-y-auto p-2 dark:bg-gray-800 relative z-[101]">
+            <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white dark:bg-gray-800 z-[102]">
               <h3 className="text-xl font-semibold">Configurações de Leitura</h3>
-              <button onClick={() => setShowSettings(false)}>
+              <button onClick={() => {
+                setShowSettings(false);
+                setShowControls(true);
+                setTimeout(() => setShowControls(false), 3000);
+              }} className="z-[103]">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -613,6 +681,8 @@ const MangaReader = () => {
                 onClick={() => {
                   saveSettings();
                   setShowSettings(false);
+                  setShowControls(true);
+                  setTimeout(() => setShowControls(false), 3000);
                 }}
               >
                 Salvar Configurações

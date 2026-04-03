@@ -16,6 +16,13 @@ export const SORT_OPTIONS = [
   { value: 'rating', label: 'Melhor Avaliados' }
 ];
 
+export const AGE_RATING_OPTIONS = [
+  { value: '0', label: 'Livre (All Ages)' },
+  { value: '13', label: '13+' },
+  { value: '16', label: '16+' },
+  { value: '18', label: '18+' }
+];
+
 export const ROLE_LABELS = {
   admin: 'Administrador',
   uploader: 'Uploader',

@@ -12,7 +12,8 @@ const ContentCard = ({ item, type = 'manga' }) => {
   const Icon = type === 'manga' ? BookOpen : FileText;
 
   // Ultimo capitulos lancado modificado para mostrar apenas o numero do capitulo
-  const lastChapter = item.chapters[item.chapters.length - 1]?.number || '';
+  const chapters = Array.isArray(item.chapters) ? item.chapters : [];
+  const lastChapterNumber = chapters.length > 0 ? (chapters[chapters.length - 1]?.number || '') : '';
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -72,7 +73,12 @@ const ContentCard = ({ item, type = 'manga' }) => {
                     <Star className="w-3 h-3 fill-current" />
                     <span>{ratingValue.toFixed(1)}</span>
                   </div>
-                ) : null;
+                ) : (
+                  <div className="flex items-center gap-1 text-gray-400 text-xs">
+                    <Star className="w-3 h-3 fill-current" />
+                    <span>0.0</span>
+                  </div>
+                );
               })()}
             </div>
           </div>
@@ -105,9 +111,25 @@ const ContentCard = ({ item, type = 'manga' }) => {
           {/* Adult Badge bottom-right */}
           <div className="absolute bottom-2 right-2">
             {(() => {
-              const isAdult = item.adult || item.is_adult || (item.age_rating && item.age_rating >= 18);
+              const ageRating = item.age_rating || 0;
+              let badgeText = 'All Ages';
+              let badgeColor = 'bg-green-500 dark:bg-green-600';
+
+              if (ageRating >= 18) {
+                badgeText = '18+';
+                badgeColor = 'bg-red-500 dark:bg-red-600';
+              } else if (ageRating >= 16) {
+                badgeText = '16+';
+                badgeColor = 'bg-orange-500 dark:bg-orange-600';
+              } else if (ageRating >= 13) {
+                badgeText = '13+';
+                badgeColor = 'bg-yellow-500 dark:bg-yellow-600';
+              }
+
               return (
-                <span className={`px-2 py-0.5 rounded text-xs font-semibold ${isAdult ? 'bg-red-600 text-white' : 'bg-green-600 text-white'} shadow-md`}>{isAdult ? '+18' : 'Livre'}</span>
+                <span className={`px-2 py-1 text-xs font-bold rounded ${badgeColor} text-white shadow-lg dark:shadow-gray-900/50`}>
+                  {badgeText}
+                </span>
               );
             })()}
           </div>
@@ -124,17 +146,20 @@ const ContentCard = ({ item, type = 'manga' }) => {
             <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
               <span className="flex-1 flex items-center gap-1 truncate">
                 <Icon className="w-3 h-3 flex-shrink-0" />
-                {item.chapters && item.chapters.length > 0 ? (
+                {chapters.length > 0 ? (
                   (() => {
-                    const last = item.chapters.reduce((a, b) => {
+                    const last = chapters.reduce((a, b) => {
                       const da = new Date(a.updated_at || a.created_at || 0).getTime();
                       const db = new Date(b.updated_at || b.created_at || 0).getTime();
                       return da > db ? a : b;
                     });
-                    return `Cap: ${lastChapter.number || last.index || ''}`;
+
+                    const chapterNum = last.chapter_number || last.number || last.index || lastChapterNumber || '';
+                    const chapterNumFormatted = chapterNum ? String(Math.trunc(Number(chapterNum))) : '';
+                    return `Cap: ${chapterNumFormatted}`;
                   })()
                 ) : (
-                  `${item.chapters?.length || 0} capítulos`
+                  `${chapters.length} capítulos`
                 )}
               </span>
 
@@ -143,8 +168,6 @@ const ContentCard = ({ item, type = 'manga' }) => {
                 <span>{formatNumber(item.views || 0)}</span>
               </span>
             </div>
-
-            {/* Genres removed as requested */}
           </div>
         </div>
       </Card>

@@ -52,6 +52,7 @@ import ErrorBoundary from './components/common/ErrorBoundary';
 import Settings from './pages/admin/Settings';
 import Notifications from './pages/admin/Notifications';
 import NovelWorldbuildingManager from './pages/admin/NovelWorldbuildingManager';
+import Transactions from './pages/admin/Transactions';
 
 // Error Pages
 import ServerError from './pages/errors/ServerError';
@@ -207,6 +208,7 @@ function App() {
               <Route path="notifications" element={<Notifications />} />
               <Route path="users" element={<ProtectedRoute adminOnly><UserManagement /></ProtectedRoute>}/>
               <Route path="novels/:id/worldbuilding" element={<NovelWorldbuildingManager />} />
+              <Route path="transactions" element={<ProtectedRoute adminOnly><Transactions /></ProtectedRoute>}/>
             </Route>
 
             {/* 404 Route */}

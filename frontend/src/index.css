@@ -127,3 +127,9 @@
 #webtoon-container {
   scroll-behavior: smooth;
 }
+
+.login-bg {
+  background-image: url('/assets/login-bg.jpg');
+  background-size: cover;
+  background-position: center;
+}

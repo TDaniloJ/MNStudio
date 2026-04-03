@@ -49,8 +49,8 @@ exports.createChapter = catchAsync(async (req, res, next) => {
   const { manga_id } = req.params;
   const { chapter_number, title } = req.body;
 
-  if (!chapter_number || !title) {
-    throw new AppError('chapter_number e title são obrigatórios', 400, 'MISSING_FIELDS');
+  if (!chapter_number) {
+    throw new AppError('chapter_number é obrigatório', 400, 'MISSING_FIELDS');
   }
 
   const manga = await Manga.findByPk(manga_id);

@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import { mangaService } from '../../services/mangaService';
 import { genreService } from '../../services/genreService';
 import { getImageUrl } from '../../utils/formatters';
-import { STATUS_OPTIONS, TYPE_OPTIONS } from '../../utils/constants';
+import { STATUS_OPTIONS, TYPE_OPTIONS, AGE_RATING_OPTIONS } from '../../utils/constants';
 import Card from '../../components/common/Card';
 import Input from '../../components/common/Input';
 import Select from '../../components/common/Select';
@@ -53,6 +53,7 @@ const MangaForm = () => {
     }
   };
 
+
   const loadManga = async () => {
     try {
       setLoading(true);
@@ -65,6 +66,7 @@ const MangaForm = () => {
       setValue('artist', manga.artist);
       setValue('status', manga.status);
       setValue('type', manga.type);
+      setValue('ageRating', manga.age_rating ? String(manga.age_rating) : '0');
 
       if (manga.cover_image) {
         setCoverPreview(getImageUrl(manga.cover_image));
@@ -147,6 +149,7 @@ const onSubmit = async (data) => {
     formData.append('artist', data.artist || '');
     formData.append('status', data.status);
     formData.append('type', data.type);
+    formData.append('age_rating', data.ageRating || '0');
     formData.append('genres', JSON.stringify(selectedGenres));
     formData.append('alternative_titles', JSON.stringify(alternativeTitles.filter(t => t.trim() !== '')));
 
@@ -337,8 +340,21 @@ const onSubmit = async (data) => {
               )}
             </div>
 
-            {/* Classificação Etária */} {/* ✅ IMPLEMENTAR */}
-              
+            {/* Classificação Etária */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                  Classificação Etária *
+                </label>
+                <Select
+                  options={AGE_RATING_OPTIONS}
+                  {...register('ageRating', {
+                    required: 'Classificação etária é obrigatória'
+                  })}
+                />
+                {errors.ageRating && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.ageRating.message}</p>
+                )}
+              </div>
 
 
             {/* Author and Artist */}

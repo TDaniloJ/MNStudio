@@ -20,6 +20,7 @@ const Home = () => {
   const [recentUpdates, setRecentUpdates] = useState([]);
   const [recommended, setRecommended] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [popular, setPopular] = useState([]);
 
   useEffect(() => {
     fetchHomeData();
@@ -92,6 +93,30 @@ const Home = () => {
 
       setRecentUpdates(allRecent);
 
+      // Buscar obras populares (mais acessadas)
+      const [popularMangas, popularNovels] = await Promise.all([
+        mangaService.getAll({ limit: 6, sort: 'views' }),
+        novelService.getAll({ limit: 6, sort: 'views' })
+      ]);
+
+      // ✅ CORRIGIDO: Identificar corretamente o tipo
+      const allPopular = [
+        ...popularMangas.mangas.map(m => ({ 
+          ...m, 
+          type: getContentType(m, 'manga'),
+          contentType: 'manga'
+        })),
+        ...popularNovels.novels.map(n => ({
+          ...n,
+          type: getContentType(n, 'novel'),
+          contentType: 'novel'
+        }))
+        // Ordenar por views e pegar top 12    
+      ].sort((a, b) => b.views - a.views).slice(0, 12);
+
+      setPopular(allPopular);
+
+
       // Buscar recomendações (aleatório com boas avaliações)
       const [recommendedMangas, recommendedNovels] = await Promise.all([
         mangaService.getAll({ limit: 6, sort: 'rating' }),
@@ -118,17 +143,26 @@ const Home = () => {
       const attachChapters = async (items) => {
         return await Promise.all(items.map(async (it) => {
           try {
+            let ch;
+
             if (it.contentType === 'manga') {
-              const ch = await mangaService.getMangaChapters(it.id);
-              it.chapters = ch.chapters || ch.chapters || ch.chapters || [];
+              ch = await mangaService.getMangaChapters(it.id);
             } else {
-              const ch = await novelService.getNovelChapters(it.id);
-              it.chapters = ch.chapters || ch.chapters || ch.chapters || [];
+              ch = await novelService.getNovelChapters(it.id);
             }
+            
+            return {
+              ...it,
+              chapters: ch?.chapters || []
+            };
+
           } catch (e) {
-            it.chapters = it.chapters || [];
+            console.error(e);
+            return {
+              ...it,
+              chapters: it.chapters || []
+            };
           }
-          return it;
         }));
       };
 
@@ -136,6 +170,7 @@ const Home = () => {
       setFeatured(await attachChapters(allFeatured));
       setRecentUpdates(await attachChapters(allRecent));
       setRecommended(await attachChapters(allRecommended));
+      setPopular(await attachChapters(allPopular));
 
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
@@ -179,10 +214,10 @@ const Home = () => {
             prevEl: '.swiper-button-prev',
           }}
           className="hero-slider"
-          style={{ height: '400px', paddingBottom: '40px', marginBottom: '30px' }}
+          style={{ height: '450px', paddingBottom: '20px', marginBottom: '30px' }}
         >
           {featured.map((item) => (
-            <SwiperSlide key={`${item.type}-${item.id}`} style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '20px' }}>
+            <SwiperSlide key={`${item.type}-${item.id}`} style={{ width: '160%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '20px' }}>
               <FeaturedSlide item={item} />
             </SwiperSlide>
           ))}
@@ -239,19 +274,38 @@ const Home = () => {
                 Obras selecionadas que você pode gostar
               </p>
             </div>
-            <Link
-              to="/mangas"
-              className="flex items-center gap-2 text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium transition-colors"
-            >
-              Ver todas
-              <ArrowRight className="w-5 h-5" />
-            </Link>
           </div>
 
           <div className="grid grid-cols-5 sm:grid-cols-5 md:grid-cols-5 lg:grid-cols-5 gap-4">
             {recommended.map((item) => (
               <ContentCard2 
                 key={`rec-${item.type}-${item.id}`} 
+                item={item} 
+                showRating 
+                // ✅ FORÇAR O TIPO CORRETO
+                type={item.type}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* Obras Populares */}
+        <section className="mb-16">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                Obras Populares
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400">
+                As obras mais acessadas por nossos usuários
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-5 sm:grid-cols-5 md:grid-cols-5 lg:grid-cols-5 gap-4">
+            {popular.map((item) => (
+              <ContentCard2 
+                key={`pop-${item.type}-${item.id}`} 
                 item={item} 
                 showRating 
                 // ✅ FORÇAR O TIPO CORRETO
@@ -275,16 +329,18 @@ const FeaturedSlide = ({ item }) => {
   return (
     <Link to={link} className="block">
       <div className="flex items-center justify-center">
-        {!imageError && imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={item.title}
-            className="w-64 h-80 sm:w-72 sm:h-80 md:w-80 md:h-80 lg:w-96 lg:h-96 object-cover rounded-lg shadow-lg transition-transform duration-300"
-            onError={() => setImageError(true)}
-          />
-        ) : (
-          <div className="w-64 h-80 sm:w-72 sm:h-80 md:w-80 md:h-80 lg:w-96 lg:h-96 bg-gray-800 rounded-lg" />
-        )}
+        <div className="relative w-[420px] h-[520px] sm:w-[520px] sm:h-[640px] md:w-[620px] md:h-[760px] lg:w-[720px] lg:h-[880px] overflow-hidden rounded-lg shadow-lg">
+          {!imageError && imageUrl ? (
+            <img
+              src={imageUrl}
+              alt={item.title}
+              className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-300 hover:scale-105"
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <div className="absolute inset-0 bg-gray-800 dark:bg-gray-700" />
+          )}
+        </div>
       </div>
     </Link>
   );

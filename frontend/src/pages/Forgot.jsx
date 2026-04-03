@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { Mail, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Mail, ArrowLeft, CheckCircle, BookOpen } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { authService } from '../services/authService';
 import Input from '../components/common/Input';
@@ -30,11 +30,15 @@ const Forgot = () => {
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left Side - Form */}
-      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-800">
-        <div className="w-full max-w-md space-y-8">
-          {/* Back Button */}
+    <div className="relative min-h-screen bg-gray-900 pb-20">
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: "url('/src/assets/login-bg.jpg')" }}
+      />
+      <div className="absolute inset-0 bg-black/60" />
+
+      <div className="relative z-10 flex min-h-screen flex-col items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md space-y-8 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-gray-200 dark:border-gray-700">
           <Link
             to="/login"
             className="inline-flex items-center gap-2 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-500"
@@ -45,22 +49,14 @@ const Forgot = () => {
 
           {!sent ? (
             <>
-              {/* Header */}
               <div className="text-center">
-                <h2 className="text-3xl font-bold text-gray-900 mb-2 dark:text-white">
-                  Recuperar Senha
-                </h2>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Digite seu email para receber instruções de recuperação
-                </p>
+                <h2 className="text-3xl font-bold text-gray-900 mb-2 dark:text-white">Recuperar Senha</h2>
+                <p className="text-gray-600 dark:text-gray-400">Digite seu email para receber instruções de recuperação</p>
               </div>
 
-              {/* Form */}
               <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
-                    Email
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">Email</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <Mail className="h-5 w-5 text-gray-400 dark:text-gray-300" />
@@ -78,9 +74,7 @@ const Forgot = () => {
                       })}
                     />
                   </div>
-                  {errors.email && (
-                    <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.email.message}</p>
-                  )}
+                  {errors.email && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.email.message}</p>}
                 </div>
 
                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
@@ -89,99 +83,84 @@ const Forgot = () => {
                   </p>
                 </div>
 
-                <Button
-                  type="submit"
-                  className="w-full"
-                  size="lg"
-                  loading={loading}
-                >
-                  <Mail className="w-5 h-5 mr-2" />
-                  Enviar Email de Recuperação
+                <Button type="submit" className="w-full" size="lg" loading={loading}>
+                  <Mail className="w-5 h-5 mr-2" /> Enviar Email de Recuperação
                 </Button>
               </form>
             </>
           ) : (
-            <>
-              {/* Success State */}
-              <div className="text-center space-y-6">
-                <div className="flex justify-center">
-                  <div className="p-4 bg-green-100 dark:bg-green-900/20 rounded-full">
-                    <CheckCircle className="w-12 h-12 text-green-600 dark:text-green-400" />
-                  </div>
+            <div className="text-center space-y-6">
+              <div className="flex justify-center">
+                <div className="p-4 bg-green-100 dark:bg-green-900/20 rounded-full">
+                  <CheckCircle className="w-12 h-12 text-green-600 dark:text-green-400" />
                 </div>
-
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2 dark:text-white">
-                    Email Enviado!
-                  </h2>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Verifique sua caixa de entrada de <strong>{email}</strong> para receber as instruções de recuperação.
-                  </p>
-                </div>
-
-                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 space-y-2">
-                  <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-200">Dicas úteis:</p>
-                  <ul className="text-sm text-yellow-700 dark:text-yellow-300 space-y-1 list-disc list-inside">
-                    <li>Verifique a pasta de spam se não encontrar o email</li>
-                    <li>O link de recuperação expira em 24 horas</li>
-                    <li>Não responda ao email, clique no link fornecido</li>
-                  </ul>
-                </div>
-
-                <Button
-                  onClick={() => navigate('/login')}
-                  className="w-full"
-                  size="lg"
-                >
-                  Voltar para Login
-                </Button>
-
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Não recebeu o email?{' '}
-                  <button
-                    onClick={() => setSent(false)}
-                    className="font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-500"
-                  >
-                    Tentar novamente
-                  </button>
-                </p>
               </div>
-            </>
+
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2 dark:text-white">Email Enviado!</h2>
+                <p className="text-gray-600 dark:text-gray-400">Verifique sua caixa de entrada de <strong>{email}</strong> para receber as instruções de recuperação.</p>
+              </div>
+
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 space-y-2">
+                <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-200">Dicas úteis:</p>
+                <ul className="text-sm text-yellow-700 dark:text-yellow-300 space-y-1 list-disc list-inside">
+                  <li>Verifique a pasta de spam se não encontrar o email</li>
+                  <li>O link de recuperação expira em 24 horas</li>
+                  <li>Não responda ao email, clique no link fornecido</li>
+                </ul>
+              </div>
+
+              <Button onClick={() => navigate('/login')} className="w-full" size="lg">
+                Voltar para Login
+              </Button>
+
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Não recebeu o email?{' '}
+                <button
+                  onClick={() => setSent(false)}
+                  className="font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-500"
+                >
+                  Tentar novamente
+                </button>
+              </p>
+            </div>
           )}
         </div>
-      </div>
 
-      {/* Right Side - Image/Illustration */}
-      <div className="hidden lg:block lg:flex-1 relative bg-gradient-to-br from-primary-600 to-primary-800 dark:from-primary-500 dark:to-primary-700 overflow-hidden">
-        <div className="absolute inset-0 flex items-center justify-center p-12">
-          <div className="max-w-lg text-white dark:text-gray-200">
-            <h2 className="text-4xl font-bold mb-6">
-              Recupere seu acesso
-            </h2>
-            <p className="text-xl text-primary-100 mb-8 dark:text-gray-300">
-              Sua conta e seus dados de leitura estarão seguros. Redefina sua senha em alguns passos simples.
-            </p>
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center dark:bg-gray-700">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="relative z-10 mt-10 w-full max-w-4xl px-4 mx-auto">
+          <div className="rounded-3xl bg-white/90 dark:bg-gray-900/80 p-8 border border-gray-200 dark:border-gray-700 shadow-xl backdrop-blur-xl">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Sua biblioteca de mangás e novels</h2>
+            <p className="text-gray-700 dark:text-gray-300 mb-6">Acesse milhares de títulos, acompanhe seu progresso de leitura e descubra novas histórias incríveis.</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="flex gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary-600/20 text-primary-600 flex items-center justify-center">
+                  <BookOpen className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Conteúdo atualizado</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">Novos capítulos adicionados diariamente</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary-600/20 text-primary-600 flex items-center justify-center">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
                 <div>
-                  <h3 className="font-semibold mb-1">Rápido e Seguro</h3>
-                  <p className="text-primary-100 text-sm dark:text-gray-300">Recuperação em poucos minutos</p>
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Totalmente gratuito</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">Sem taxas ou assinaturas</p>
                 </div>
               </div>
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center dark:bg-gray-700">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              <div className="sm:col-span-2 flex gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary-600/20 text-primary-600 flex items-center justify-center">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
                 <div>
-                  <h3 className="font-semibold mb-1">Altamente Seguro</h3>
-                  <p className="text-primary-100 text-sm dark:text-gray-300">Seus dados estão sempre protegidos</p>
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Continue de onde parou</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">Histórico de leitura sincronizado</p>
                 </div>
               </div>
             </div>

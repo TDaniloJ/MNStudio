@@ -7,7 +7,7 @@ const AppError = require('../utils/AppError');
 const logger = require('../utils/logger');
 
 exports.createManga = catchAsync(async (req, res, next) => {
-  const { title, alternative_titles, description, author, artist, status, type, genres } = req.body;
+  const { title, alternative_titles, description, author, artist, status, type, age_rating, genres } = req.body;
 
   if (!title) {
     throw new AppError('Título é obrigatório', 400, 'MISSING_TITLE');
@@ -27,6 +27,7 @@ exports.createManga = catchAsync(async (req, res, next) => {
     artist: artist || '',
     status,
     type,
+    age_rating: age_rating ? Number(age_rating) : 0,
     uploaded_by: req.userId
   });
 
@@ -57,7 +58,7 @@ exports.createManga = catchAsync(async (req, res, next) => {
 
 exports.updateManga = catchAsync(async (req, res, next) => {
   const { id } = req.params;
-  const { title, alternative_titles, description, author, artist, status, type, genres } = req.body;
+  const { title, alternative_titles, description, author, artist, status, type, age_rating, genres } = req.body;
 
   const manga = await Manga.findByPk(id);
   if (!manga) {
@@ -77,6 +78,7 @@ exports.updateManga = catchAsync(async (req, res, next) => {
   if (artist) manga.artist = artist;
   if (status) manga.status = status;
   if (type) manga.type = type;
+  if (age_rating !== undefined) manga.age_rating = Number(age_rating);
 
   // Processar imagem
   if (req.file) {
