@@ -1,3 +1,4 @@
+const BASE_URL = import.meta.env.VITE_BASE_URL;
 export const formatDate = (date) => {
   return new Date(date).toLocaleDateString('pt-BR', {
     day: '2-digit',
@@ -29,15 +30,17 @@ export const formatNumber = (num) => {
   return number.toString();
 };
 
-export const getImageUrl = (path) => {
-  if (!path) return null; // Retorna null em vez de placeholder
+export const getImageUrl = (path, updatedAt = null) => {
+  if (!path) return null;
   if (path.startsWith('http')) return path;
-  
-  // Remove barra dupla se existir
+
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  // Adiciona timestamp como cache-buster para forçar recarregamento de imagens atualizadas
-  const timestamp = new Date().getTime();
-  return `http://localhost:5000${cleanPath}?t=${timestamp}`;
+
+  if (updatedAt) {
+    return `${BASE_URL}${cleanPath}?v=${new Date(updatedAt).getTime()}`;
+  }
+
+  return `${BASE_URL}${cleanPath}`;
 };
 
 export const truncateText = (text, maxLength) => {

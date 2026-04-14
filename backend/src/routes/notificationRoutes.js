@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const notificationController = require('../controllers/notificationController');
-const { auth } = require('../middlewares/auth');
+const { auth, isAdmin } = require('../middlewares/auth');
 
 // Rotas protegidas (requerem autenticação)
 router.use(auth);
@@ -19,9 +19,9 @@ router.put('/read-all', notificationController.markAllAsRead.bind(notificationCo
 router.delete('/:id', notificationController.deleteNotification.bind(notificationController));
 
 // Criar notificação (apenas admin)
-router.post('/', notificationController.createNotification.bind(notificationController));
+router.post('/', isAdmin, notificationController.createNotification.bind(notificationController));
 
 // Enviar notificação para múltiplos usuários (apenas admin)
-router.post('/broadcast', notificationController.broadcastNotification.bind(notificationController));
+router.post('/broadcast', isAdmin, notificationController.broadcastNotification.bind(notificationController));
 
 module.exports = router;

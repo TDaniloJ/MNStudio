@@ -153,11 +153,9 @@ const MangaDetail = () => {
 
   // ✅ Função para obter imagem do capítulo
   const getChapterImage = (chapter) => {
-    if (chapter.pages && chapter.pages.length > 0) {
-      const firstPage = chapter.pages.find(p => p.page_number === 1) || chapter.pages[0];
-      return getImageUrl(firstPage.image_url);
-    }
-    return null;
+    return chapter.thumbnail
+      ? getImageUrl(chapter.thumbnail)
+      : null;
   };
 
   return (
@@ -167,7 +165,7 @@ const MangaDetail = () => {
         {/* Blurred Background Image */}
         {!imageError && imageUrl && (
           <div 
-            className="absolute inset-0 opacity-20 blur-2xl"
+            className="absolute inset-0 opacity-30 blur-2xl"
             style={{
               backgroundImage: `url(${imageUrl})`,
               backgroundSize: 'cover',
@@ -275,8 +273,9 @@ const MangaDetail = () => {
                           setRatingLoading(true);
                           await ratingService.submitRating('manga', currentManga.id, s);
                           await fetchMangaById(id);
-                          setUserRating(s);
-                          toast.success('Avaliação enviada');
+                          setUserRating(s); 
+                          toast.success('Avaliação enviada');                  
+
                         } catch (err) {
                           toast.error('Erro ao enviar avaliação');
                         } finally {
@@ -554,7 +553,9 @@ const MangaDetail = () => {
                     <p className="font-semibold text-gray-900 dark:text-gray-200">
                       {currentManga.uploader.username}
                     </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Uploader</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {currentManga.uploader.role === 'admin' ? 'Administrador' : 'Usuário'}
+                    </p>
                   </div>
                 </div>
               </Card>

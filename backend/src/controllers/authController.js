@@ -19,15 +19,31 @@ const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/AppError');
 const logger = require('../utils/logger');
 
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE
-  });
+const generateToken = (user) => {
+  return jwt.sign(
+    {
+      id: user.id,
+      role: user.role
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: process.env.JWT_EXPIRE
+    }
+  );
 };
 
-/**
- * Valida erros de validação do express-validator
- */
+const hashPassword = async (password) => {
+  if (!password || password.length < 6) {
+    throw new AppError('Senha inválida', 400);
+  }
+  return bcrypt.hash(password, 10);
+};
+
+const comparePassword = async (password, hash) => {
+  if (!password || !hash) return false;
+  return bcrypt.compare(password, hash);
+};
+
 const validateRequest = (req) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -57,9 +73,11 @@ exports.register = catchAsync(async (req, res, next) => {
     throw new AppError('Nome de usuário já cadastrado', 409, 'DUPLICATE_USERNAME', { field: 'username' });
   }
 
-  // Hash da senha
-  const salt = await bcrypt.genSalt(10);
-  const password_hash = await bcrypt.hash(password, salt);
+  if (!email || !password || !username) {
+    throw new AppError('Dados obrigatórios faltando', 400);
+  }
+
+  const password_hash = await hashPassword(password);
 
   // Criar usuário
   const user = await User.create({
@@ -69,7 +87,7 @@ exports.register = catchAsync(async (req, res, next) => {
     role: 'reader'
   });
 
-  const token = generateToken(user.id);
+  const token = generateToken(user);
 
   logger.info('Usuário registrado com sucesso', {
     userId: user.id,
@@ -101,12 +119,16 @@ exports.login = catchAsync(async (req, res, next) => {
   }
 
   // Verificar senha
-  const isMatch = await bcrypt.compare(password, user.password_hash);
+  if (!email || !password) {
+    throw new AppError('Email e senha são obrigatórios', 400);
+  }
+
+  const isMatch = await comparePassword(password, user.password_hash);
   if (!isMatch) {
     throw new AppError('Credenciais inválidas', 401, 'INVALID_CREDENTIALS');
   }
 
-  const token = generateToken(user.id);
+  const token = generateToken(user);
 
   logger.info('Login realizado com sucesso', {
     userId: user.id,
@@ -252,7 +274,6 @@ exports.sendVerificationEmail = async (req, res) => {
 
     res.json({ 
       message: 'Email de verificação enviado com sucesso',
-      verification_token: verificationToken
     });
   } catch (error) {
     console.error('[sendVerificationEmail] ❌ Erro completo:', error);
@@ -679,6 +700,29 @@ exports.googleLogin = async (req, res) => {
         console.error('❌ Audience (aud) inválido:', decoded.aud);
         return res.status(401).json({ error: 'Token não destinado a este aplicativo (aud mismatch)' });
       }
+
+      // 🔒 ✅ VALIDAR ISSUER (quem emitiu o token)
+      if (
+        decoded.iss !== 'https://accounts.google.com' &&
+        decoded.iss !== 'accounts.google.com'
+      ) {
+        return res.status(401).json({ error: 'Issuer inválido' });
+      }
+
+      // 🔒 ✅ VALIDAR EMAIL VERIFIED (vem como string)
+      const emailVerified = decoded.email_verified === 'true';
+
+      if (!emailVerified) {
+        return res.status(401).json({ error: 'Email não verificado pelo Google' });
+      }
+
+      // 🔒 ✅ VALIDAR EXPIRAÇÃO (extra segurança)
+      const now = Math.floor(Date.now() / 1000);
+
+      if (decoded.exp < now) {
+        return res.status(401).json({ error: 'Token expirado' });
+      }
+
     } catch (error) {
       console.error('Erro ao verificar token do Google via tokeninfo:', error);
       return res.status(401).json({ error: 'Falha ao validar token do Google' });
@@ -727,7 +771,7 @@ exports.googleLogin = async (req, res) => {
     }
 
     // Gerar token
-    const token = generateToken(user.id);
+    const token = generateToken(user);
 
     res.json({
       message: 'Login com Google realizado com sucesso',

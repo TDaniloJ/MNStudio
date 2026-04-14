@@ -1,5 +1,3 @@
-const { HelpCenter } = require('../models');
-
 module.exports = (sequelize, DataTypes) => {
   const HelpCenter = sequelize.define('HelpCenter', {
     question: {

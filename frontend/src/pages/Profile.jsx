@@ -5,7 +5,7 @@ import {
   User, Mail, Lock, Camera, Settings, Shield,
   CreditCard, Monitor, Download, Trash2, LogOut,
   Smartphone, Globe, Bell, CheckCircle, XCircle,
-  Key, QrCode, ShieldCheck, Activity, Edit, Eye, Heart, BookOpen as BookOpenIcon
+  Key, QrCode, ShieldCheck, Activity, Edit, Eye, Heart, Star, Trophy, BookOpen as BookOpenIcon
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
@@ -60,6 +60,16 @@ const Profile = () => {
   const [stats, setStats] = useState(null);
   const [activity, setActivity] = useState([]);
   const [achievements, setAchievements] = useState([]);
+
+const iconMap = {
+  star: <Star className="w-5 h-5" />,
+  trophy: <Trophy className="w-5 h-5" />,
+  lock: <Lock className="w-5 h-5" />,
+  user: <User className="w-5 h-5" />,
+  security: <ShieldCheck className="w-5 h-5" />,
+};
+
+
 
   // Estados para novas funcionalidades
   const [emailVerification, setEmailVerification] = useState({
@@ -128,6 +138,7 @@ const Profile = () => {
       try {
         const data = await badgeService.getUserBadges(user.id);
         setAchievements(Array.isArray(data?.badges) ? data.badges : []);
+        console.log('BADGES ARRAY:', data.badges);
       } catch (err) {
         console.error('Erro ao carregar conquistas:', err);
       }
@@ -653,8 +664,8 @@ const Profile = () => {
                 <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
                   <Activity className="w-4 h-4 text-primary-600" />
                 </div>
-                <div>
-                  <p className="text-sm font-medium">{item.title}</p>
+                <div className="flex-1 text-sm text-gray-900 dark:text-white">
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{item.title}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">{item.description}</p>
                 </div>
               </div>
@@ -670,24 +681,19 @@ const Profile = () => {
             )}
             {achievements.map((item) => (
               <div key={item.id} className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/10 rounded-lg">
-                <div className="w-10 h-10 mx-auto bg-yellow-100 rounded-full flex items-center justify-center text-yellow-600 text-lg mb-1">
-                  {item.icon}
-                </div>
-                <span className="text-xs font-medium">{item.title}</span>
+              <div className="w-10 h-10 mx-auto bg-yellow-100 rounded-full flex items-center justify-center text-blue-600 text-lg mb-1">
+                {item.icon_url ? (
+                  <img src={item.icon_url} alt={item.name} className="w-6 h-6" />
+                ) : (
+                  "⭐"
+                )}
+              </div>
+
+              <span className="text-xs font-medium">
+                {item.name}
+              </span>
               </div>
             ))}
-            <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/10 rounded-lg">
-              <div className="w-10 h-10 mx-auto bg-yellow-100 rounded-full flex items-center justify-center text-yellow-600 text-lg mb-1">👤</div>
-              <span className="text-xs font-medium">Perfil</span>
-            </div>
-            <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/10 rounded-lg">
-              <div className="w-10 h-10 mx-auto bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-lg mb-1">🔐</div>
-              <span className="text-xs font-medium">Seguro</span>
-            </div>
-            <div className="text-center p-3 bg-green-50 dark:bg-green-900/10 rounded-lg">
-              <div className="w-10 h-10 mx-auto bg-green-100 rounded-full flex items-center justify-center text-green-600 text-lg mb-1">⭐</div>
-              <span className="text-xs font-medium">Ativo</span>
-            </div>
           </div>
         </Card>
       </div>
@@ -729,7 +735,7 @@ const Profile = () => {
                 .slice(0, 8)
                 .map((item) => (
                   <div key={`${item.id}-${item.type || (favorites.mangas.find((m) => m.id===item.id) ? 'manga' : 'novel')}`} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700">
+                    <div className="w-420 h-520 rounded-lg overflow-hidden  bg-gray-200 dark:bg-gray-700">
                       <img
                         src={getImageUrl(item.cover_image)}
                         alt={item.title}

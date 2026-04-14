@@ -247,19 +247,22 @@ const MangaReader = () => {
         : document.getElementById('page-container');
 
     if (container) {
-      container.scrollTo({ top: 0, behavior: 'smooth' });
+      container.scrollTo({ top: 0, behavior: 'instant' });
     }
   };
 
   const preloadImages = () => {
-    if (!pages || pages.length === 0) return;
-    
+    if (!pages?.length) return;
+
     const startIdx = Math.max(0, currentPage - 1);
     const endIdx = Math.min(pages.length, currentPage + preloadPages + 1);
-    
+
     for (let i = startIdx; i < endIdx; i++) {
+      const url = getImageUrl(pages[i]?.image_url);
+      if (!url) continue;
+
       const img = new Image();
-      img.src = getImageUrl(pages[i]?.image_url);
+      img.src = url;
     }
   };
 
@@ -283,7 +286,7 @@ const MangaReader = () => {
         setShowEndModal(true);
       }
     }
-  }, [currentPage, pages, autoAdvance]);
+  }, [currentPage, pages, autoAdvance, chapters, currentChapterIndex, navigate, mangaId]);
 
   const prevPage = useCallback(() => {
     if (currentPage > 0) {
@@ -705,8 +708,9 @@ const MangaReader = () => {
                 style={{ transform: `scale(${zoom / 100})` }}
                 onClick={nextPage}
                 onError={(e) => {
-                  e.currentTarget.onerror = null;
-                  e.currentTarget.src = READER_ASSETS.fallback;
+                  if (e.currentTarget.src !== READER_ASSETS.fallback) {
+                    e.currentTarget.src = READER_ASSETS.fallback;
+                  }
                 }}
               />
             ) : (
@@ -757,7 +761,8 @@ const MangaReader = () => {
             {pages.map((page, index) => (
               page ? (
                 <img
-                  key={page.id}
+                  key={`${page.id}-${index}`}
+                  data-page-index={index}
                   src={getImageUrl(page.image_url)}
                   alt={`Página ${index + 1}`}
                   className="w-full max-w-3xl h-auto object-contain rounded-md shadow-sm transition-transform duration-300"

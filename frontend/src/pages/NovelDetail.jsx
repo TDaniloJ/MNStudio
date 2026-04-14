@@ -34,8 +34,19 @@ const NovelDetail = () => {
   const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [sortOrder, setSortOrder] = useState('asc');
+  const [userRating, setUserRating] = useState(0);
+  const [ratingLoading, setRatingLoading] = useState(false);
 
   useEffect(() => {
+    const loadNovel = async () => {
+      try {
+        await fetchNovelById(id);
+      } catch {
+        toast.error('Erro ao carregar novel');
+        navigate('/novels');
+      }
+    };
+
     loadNovel();
     return () => clearCurrentNovel();
   }, [id]);
@@ -60,6 +71,30 @@ const NovelDetail = () => {
 
     checkFavoriteStatus();
   }, [isAuthenticated, currentNovel]);
+
+  useEffect(() => {
+    const loadRatings = async () => {
+      if (!currentNovel) return;
+
+      try {
+        const res = await ratingService.getRatings('novel', currentNovel.id);
+        if (res.ratings?.length > 0) {
+          const me = res.ratings.find(r => r.user_id === (user?.id || 0));
+          if (me) setUserRating(me.score);
+        }
+      } catch {}
+    };
+
+    loadRatings();
+  }, [currentNovel, user?.id]);
+
+  if (!loading && !currentNovel) {
+    return (
+      <div className="p-10 text-center">
+        Novel não encontrada 😢
+      </div>
+    );
+  }
 
   const loadNovel = async () => {
     try {
@@ -158,25 +193,6 @@ const NovelDetail = () => {
         return 'Desconhecido';
     }
   };
-
-  const [userRating, setUserRating] = useState(0);
-  const [ratingLoading, setRatingLoading] = useState(false);
-
-  useEffect(() => {
-    const loadRatings = async () => {
-      if (!currentNovel) return;
-      try {
-        const res = await ratingService.getRatings('novel', currentNovel.id);
-        if (res.ratings && res.ratings.length > 0) {
-          const me = res.ratings.find(r => r.user_id === (user?.id || 0));
-          if (me) setUserRating(me.score);
-        }
-      } catch (e) {
-        // ignore
-      }
-    };
-    loadRatings();
-  }, [currentNovel]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">

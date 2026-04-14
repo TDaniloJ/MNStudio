@@ -4,29 +4,34 @@ const { User } = require('../models');
 
 const optionalAuth = async (req, res, next) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    const authHeader = req.header('Authorization');
 
-    if (token && token !== 'undefined' && token !== 'null') {
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await User.findByPk(decoded.id);
-        
-        if (user) {
-          req.user = user;
-          req.userId = user.id;
-          console.log('🔐 OptionalAuth - Usuário autenticado:', user.id);
-        }
-      } catch (jwtError) {
-        // Token inválido - apenas continua sem userId
-        console.log('🔐 OptionalAuth - Token inválido');
-      }
-    } else {
-      console.log('🔐 OptionalAuth - Token ausente');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return next();
     }
-    
+
+    const token = authHeader.split(' ')[1];
+
+    if (!token || token === 'undefined' || token === 'null') {
+      return next();
+    }
+
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+      req.user = {
+        id: decoded.id,
+        role: decoded.role
+      };
+
+      req.userId = decoded.id;
+
+    } catch (err) {
+      // silencioso em produção
+    }
+
     next();
-  } catch (error) {
-    console.error('🔐 OptionalAuth - Erro:', error);
+  } catch {
     next();
   }
 };

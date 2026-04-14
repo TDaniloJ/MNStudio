@@ -1,4 +1,3 @@
-// models/index.js - ATUALIZADO
 const { Sequelize } = require('sequelize');
 const config = require('../config/database');
 

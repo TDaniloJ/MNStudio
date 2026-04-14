@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/pt-br';
+import { useNavigate } from 'react-router-dom';
 
 import { notificationService } from '../services/userEnhancementService';
 import { useAuthStore } from '../store/authStore';
@@ -24,6 +25,8 @@ const Notifications = () => {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+
+  const navigate = useNavigate();
 
   const fetchPage = useCallback(async (pageToLoad = 0) => {
     if (!isAuthenticated) return;
@@ -62,18 +65,13 @@ const Notifications = () => {
 
   // realtime
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !user?.id) return;
 
-    if (user?.id) socket.emit('join:user', user.id);
+    socket.emit('join:user', user.id);
 
-    const onNewNotification = (payload) => {
-      setNotifications((prev) => [payload, ...prev]);
-      setUnreadCount((prev) => prev + 1);
+    return () => {
+      socket.emit('leave:user', user.id); // 🔥 evita vazamento
     };
-
-    socket.on('notification:new', onNewNotification);
-
-    return () => socket.off('notification:new', onNewNotification);
   }, [isAuthenticated, user?.id]);
 
   const handleLoadMore = async () => {
@@ -119,6 +117,23 @@ const Notifications = () => {
     } catch {
       toast.error('Erro ao remover');
     }
+  };
+
+  const getIcon = (type) => {
+    switch (type) {
+      case 'success': return '✅';
+      case 'error': return '❌';
+      case 'warning': return '⚠️';
+      default: return '📢';
+    }
+  };
+
+  const formatTime = (date) => {
+    const d = dayjs(date);
+    if (dayjs().diff(d, 'day') > 7) {
+      return d.format('DD/MM/YYYY');
+    }
+    return d.fromNow();
   };
 
   if (!isAuthenticated) {
@@ -174,7 +189,9 @@ const Notifications = () => {
                   !n.read_at ? 'bg-primary-50 dark:bg-primary-900/10' : ''
                 }`}
               >
-                <div className="text-xl mt-0.5">📢</div>
+                <div className="text-xl mt-0.5">
+                  {getIcon(n.type)}
+                </div>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-3">
@@ -198,21 +215,25 @@ const Notifications = () => {
                   </p>
 
                   <p className="text-xs text-gray-500 mt-2">
-                    {dayjs(n.created_at).fromNow()}
+                    {formatTime(n.created_at)}
                   </p>
 
                   {n.action_url && (
-                    <a
-                      href={n.action_url}
+                    <button
+                      onClick={() => navigate(n.action_url)}
                       className="inline-block mt-2 text-sm text-primary-600 hover:underline"
                     >
                       Abrir
-                    </a>
+                    </button>
                   )}
                 </div>
 
                 <button
-                  onClick={() => handleDelete(n.id)}
+                  onClick={() => {
+                    if (confirm('Deseja remover esta notificação?')) {
+                      handleDelete(n.id);
+                    }
+                  }}
                   className="text-gray-400 hover:text-red-600 transition"
                   title="Excluir"
                 >

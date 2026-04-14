@@ -19,7 +19,8 @@ import {
   User,
   Settings,
   HelpCircle,
-  Coins
+  Coins,
+  Trophy,
 } from 'lucide-react';
 import { Settings as SettingsIcon } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
@@ -48,6 +49,8 @@ const AdminLayout = () => {
     { path: '/admin/users', icon: Users, label: 'Usuários', adminOnly: true },
     { path: '/admin/notifications', icon: Mail, label: 'Notificações', adminOnly: true },
     { path: '/admin/transactions', icon: Coins, label: 'Transações', adminOnly: true },
+    { path: '/admin/support', icon: HelpCircle, label: 'Suporte', adminOnly: true },
+    { path: '/admin/badges', icon: Trophy, label: 'Conquistas', adminOnly: true },
     { path: '/admin/settings', icon: SettingsIcon, label: 'Configurações', adminOnly: true },
   ];
 

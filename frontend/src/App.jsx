@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/authStore';
@@ -53,6 +53,8 @@ import Settings from './pages/admin/Settings';
 import Notifications from './pages/admin/Notifications';
 import NovelWorldbuildingManager from './pages/admin/NovelWorldbuildingManager';
 import Transactions from './pages/admin/Transactions';
+import SupportManagement from './pages/admin/Support';
+import Badge from './pages/admin/Badge';
 
 // Error Pages
 import ServerError from './pages/errors/ServerError';
@@ -107,24 +109,27 @@ function App() {
     loadPublicSettings();
   }, []); 
 
+const socketConnected = useRef(false);
+
   useEffect(() => {
-    if (isAuthenticated && user?.id) {
-      socket.connect();
+    if (!isAuthenticated || !user?.id) return;
 
-      // entra na sala do usuário
-      socket.emit('join:user', user.id);
+    if (socketConnected.current) return;
+    socketConnected.current = true;
 
-      // se for admin entra na sala de admins
-      if (user.role === 'admin') {
-        socket.emit('join:admin');
-      }
+    socket.connect();
+
+    socket.emit('join:user', user.id);
+
+    if (user.role === 'admin') {
+      socket.emit('join:admin');
     }
 
-    // quando deslogar ou fechar, desconecta
     return () => {
       socket.disconnect();
+      socketConnected.current = false;
     };
-  }, [isAuthenticated, user?.id, user?.role]);
+  }, [isAuthenticated, user?.id]);
 
   return (
     <ThemeProvider>
@@ -209,6 +214,8 @@ function App() {
               <Route path="users" element={<ProtectedRoute adminOnly><UserManagement /></ProtectedRoute>}/>
               <Route path="novels/:id/worldbuilding" element={<NovelWorldbuildingManager />} />
               <Route path="transactions" element={<ProtectedRoute adminOnly><Transactions /></ProtectedRoute>}/>
+              <Route path="support" element={<ProtectedRoute adminOnly><SupportManagement /></ProtectedRoute>}/>
+              <Route path="badges" element={<ProtectedRoute adminOnly><Badge /></ProtectedRoute>}/>
             </Route>
 
             {/* 404 Route */}

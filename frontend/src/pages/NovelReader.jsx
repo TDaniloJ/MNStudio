@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ChevronLeft, 
@@ -27,6 +27,8 @@ import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import { useSettingsStore } from '../store/settingsStore';
 import { notificationService } from '../services/userEnhancementService';
+import DOMPurify from 'dompurify';
+import { marked } from 'marked';
 
 const NovelReader = () => {
   const { novelId, chapterId } = useParams();
@@ -60,6 +62,30 @@ const NovelReader = () => {
 
   const [autoAdvance, setAutoAdvance] = useState(false);
 
+  const formatContent = (content) => {
+    if (!content) return '';
+    
+    return content
+      .split(/\n\s*\n/)
+      .map(paragraph => {
+        const trimmed = paragraph.trim();
+        return trimmed ? `<p>${trimmed.replace(/\n/g, '<br/>')}</p>` : '';
+      })
+      .join('');
+  };
+
+  const sanitizedContent = useMemo(() => {
+    if (!chapter?.content) return '';
+    
+    const rawHtml = marked.parse(chapter.content);
+    return DOMPurify.sanitize(rawHtml);
+  }, [chapter?.content]);
+
+useEffect(() => {
+  loadChapter();
+  loadNovelData();
+}, [chapterId, novelId]);
+
   useEffect(() => {
     const gv = publicSettings?.reader_auto_advance;
     if (gv !== undefined && gv !== null) {
@@ -68,54 +94,47 @@ const NovelReader = () => {
     }
   }, [publicSettings]);
 
-  useEffect(() => {
-    loadChapter();
-    loadNovelData();
-    loadPreferences();   
+useEffect(() => {
+  let ticking = false;
 
-    const handleMarkAsRead = async () => {
-      try {
-        // ... marcar como lido ...
-        
-        // Atualizar notificações
-        const data = await notificationService.getNotifications(false, 10);
-        setNotifications(data.notifications);
-        setUnreadCount(data.unread_count);
-        
-        // Toast de confirmação
-        toast.success('Capítulo marcado como lido!');
-      } catch (error) {
-        toast.error('Erro ao marcar capítulo');
-      }
-    };
+  const handleScroll = () => {
+    if (!ticking) {
+      window.requestAnimationFrame(() => {
+        const article = document.querySelector('article');
+        if (article) {
+          const scrollTop = window.scrollY;
+          const articleTop = article.offsetTop;
+          const articleHeight = article.offsetHeight;
+          const windowHeight = window.innerHeight;
 
-    // Track reading progress
-    const handleScroll = () => {
-      const article = document.querySelector('article');
-      if (article) {
-        const scrollTop = window.scrollY;
-        const articleTop = article.offsetTop;
-        const articleHeight = article.offsetHeight;
-        const windowHeight = window.innerHeight;
-        
-        const progress = Math.min(100, Math.max(0, 
-          ((scrollTop + windowHeight - articleTop) / articleHeight) * 100
-        ));
-        setReadingProgress(progress);
-      }
-    };
+          const progress = Math.min(100, Math.max(0,
+            ((scrollTop + windowHeight - articleTop) / articleHeight) * 100
+          ));
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [chapterId]);
+          setReadingProgress(progress);
+        }
+        ticking = false;
+      });
 
-  useEffect(() => {
-    if (chapter && isAuthenticated) {
-      saveProgress();
+      ticking = true;
     }
-  }, [chapter, readingProgress]);
+  };
 
-  // Keyboard shortcuts
+  window.addEventListener('scroll', handleScroll);
+  return () => window.removeEventListener('scroll', handleScroll);
+}, [chapterId]);
+
+  useEffect(() => {
+    if (!chapter || !isAuthenticated) return;
+
+    const timeout = setTimeout(() => {
+      saveProgress();
+    }, 2000); // debounce
+
+    return () => clearTimeout(timeout);
+  }, [readingProgress]);
+
+    // Keyboard shortcuts
   useEffect(() => {
     const handleKeyPress = (e) => {
       if (showSettings || showChapters) return;
@@ -151,6 +170,45 @@ const NovelReader = () => {
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [showSettings, showChapters, isFullscreen]);
+
+  useEffect(() => {
+  let touchStartX = 0;
+
+  const handleTouchStart = (e) => {
+    touchStartX = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e) => {
+    const diff = e.changedTouches[0].clientX - touchStartX;
+
+    if (diff > 50) prevChapter();
+    if (diff < -50) nextChapter();
+  };
+
+  window.addEventListener('touchstart', handleTouchStart);
+  window.addEventListener('touchend', handleTouchEnd);
+
+  return () => {
+    window.removeEventListener('touchstart', handleTouchStart);
+    window.removeEventListener('touchend', handleTouchEnd);
+  };
+}, []);
+
+  const handleMarkAsRead = async () => {
+    try {
+      // ... marcar como lido ...
+      
+      // Atualizar notificações
+      const data = await notificationService.getNotifications(false, 10);
+      setNotifications(data.notifications);
+      setUnreadCount(data.unread_count);
+      
+      // Toast de confirmação
+      toast.success('Capítulo marcado como lido!');
+    } catch (error) {
+      toast.error('Erro ao marcar capítulo');
+    }
+  };
 
   const loadChapter = async () => {
     try {
@@ -299,31 +357,23 @@ const NovelReader = () => {
 
   const nextChapter = () => {
     const { next } = getAdjacentChapters();
-    if (next) {
-      if (autoAdvance) {
-        navigate(`/novel/${novelId}/chapter/${next.id}`);
-      } else {
-        // Show confirm modal before navigating
-        setNextChapterTarget(next.id);
-        setShowNextConfirm(true);
-      }
-    } else {
+
+    if (!next) {
       setShowEndModal(true);
+      return;
+    }
+
+    const isNearEnd = readingProgress > 90;
+
+    if (autoAdvance && isNearEnd) {
+      navigate(`/novel/${novelId}/chapter/${next.id}`);
+    } else {
+      setNextChapterTarget(next.id);
+      setShowNextConfirm(true);
     }
   };
 
-  const formatContent = (content) => {
-    if (!content) return '';
-    
-    // Replace multiple newlines with paragraphs
-    return content
-      .split(/\n\s*\n/)
-      .map(paragraph => {
-        const trimmed = paragraph.trim();
-        return trimmed ? `<p>${trimmed.replace(/\n/g, '<br/>')}</p>` : '';
-      })
-      .join('');
-  };
+
 
   if (loading || !chapter) {
     return <Loading fullScreen />;
@@ -768,9 +818,7 @@ const NovelReader = () => {
           >
             <div 
               style={{ marginBottom: `${paragraphSpacing}em` }}
-              dangerouslySetInnerHTML={{ 
-                __html: formatContent(chapter.content)
-              }}
+              dangerouslySetInnerHTML={{ __html: sanitizedContent }}
             />
           </div>
         </article>

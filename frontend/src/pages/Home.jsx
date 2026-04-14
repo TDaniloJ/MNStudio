@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { TrendingUp, BookOpen, FileText, ArrowRight, Clock, Eye, Star } from 'lucide-react';
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -22,7 +22,13 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [popular, setPopular] = useState([]);
 
+  const hasFetched = useRef(false);
+
   useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+
+    console.log('🔥 FETCH MANGAS');
     fetchHomeData();
   }, []);
 
@@ -140,37 +146,12 @@ const Home = () => {
       setRecommended(allRecommended);
 
       // Anexar capítulos para os cards (para mostrar último capítulo / contagem)
-      const attachChapters = async (items) => {
-        return await Promise.all(items.map(async (it) => {
-          try {
-            let ch;
-
-            if (it.contentType === 'manga') {
-              ch = await mangaService.getMangaChapters(it.id);
-            } else {
-              ch = await novelService.getNovelChapters(it.id);
-            }
-            
-            return {
-              ...it,
-              chapters: ch?.chapters || []
-            };
-
-          } catch (e) {
-            console.error(e);
-            return {
-              ...it,
-              chapters: it.chapters || []
-            };
-          }
-        }));
-      };
 
       // fetch in parallel but limited set sizes (already limited by API calls)
-      setFeatured(await attachChapters(allFeatured));
-      setRecentUpdates(await attachChapters(allRecent));
-      setRecommended(await attachChapters(allRecommended));
-      setPopular(await attachChapters(allPopular));
+      setFeatured(allFeatured);
+      setRecentUpdates(allRecent);
+      setRecommended(allRecommended);
+      setPopular(allPopular);
 
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
