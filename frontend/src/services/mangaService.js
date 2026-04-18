@@ -117,9 +117,8 @@ export const mangaService = {
 
   async getChapterPages(chapterId) {
     try {
-      console.log(`🔍 Buscando páginas do capítulo ${chapterId}...`);
       const response = await api.get(`/mangas/chapters/${chapterId}/pages`);
-      console.log('✅ Resposta da API:', response.data);
+      
       return response.data;
     } catch (error) {
       console.error(`❌ Erro ao buscar páginas do capítulo ${chapterId}:`, error);

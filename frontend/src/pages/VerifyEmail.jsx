@@ -30,9 +30,12 @@ const VerifyEmail = () => {
         const response = await authService.verifyEmail(token);
         
         // Atualizar usuário no store
-        if (response.user) {
-          updateUser(response.user);
-        }
+        await authService.verifyEmail(token);
+
+        // 🔥 BUSCAR USER COMPLETO
+        const me = await authService.getMe();
+
+        updateUser(me.user);
         
         setStatus('success');
         setMessage('Email verificado com sucesso!');

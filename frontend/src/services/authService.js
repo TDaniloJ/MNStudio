@@ -8,16 +8,49 @@ export const authService = {
   },
 
   async login(data) {
+    console.log('🔥 LOGIN CHAMADO');
     const response = await api.post('/auth/login', data);
     if (response.data.token) {
       localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+
+      // ✅ buscar dados completos
+      console.log('USER LOGIN:', response.data.user);
+      const me = await authService.getMe();
+      console.log('USER ME:', me.user);
+
+      localStorage.setItem('user', JSON.stringify(me.user));
+
+      return {
+        ...response.data,
+        user: me.user
+      };
+
     }
     return response.data;
   },
 
+  async googleLogin(data) {
+  const response = await api.post('/auth/google', data);
+
+  if (response.data.token) {
+    localStorage.setItem('token', response.data.token);
+
+    const me = await this.getMe();
+
+    localStorage.setItem('user', JSON.stringify(me.user));
+
+    return {
+      ...response.data,
+      user: me.user
+    };
+  }
+
+  return response.data;
+},
+
   async getMe() {
     const response = await api.get('/auth/me');
+    console.log('ME:', response.data); // ✅ LOG COMPLETO DO USUÁRIO
     return response.data;
   },
 

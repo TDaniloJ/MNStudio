@@ -215,10 +215,10 @@ const NovelForm = () => {
           📚 Worldbuilding
         </Button>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             {isEdit ? 'Editar Novel' : 'Nova Novel'}
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-300">
             {isEdit ? 'Atualize as informações da novel' : 'Preencha os dados para cadastrar uma nova novel'}
           </p>
         </div>
@@ -243,7 +243,7 @@ const NovelForm = () => {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" encType="multipart/form-data">
         {/* Basic Info */}
         <Card className="p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
             Informações Básicas
           </h2>
 

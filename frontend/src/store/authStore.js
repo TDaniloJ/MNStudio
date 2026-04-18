@@ -10,7 +10,18 @@ export const useAuthStore = create((set) => ({
     set({ loading: true });
     try {
       const data = await authService.login(credentials);
-      set({ user: data.user, isAuthenticated: true, loading: false });
+
+      // ✅ buscar dados completos
+      const me = await authService.getMe();
+
+      set({
+        user: me.user,
+        isAuthenticated: true,
+        loading: false
+      });
+
+      localStorage.setItem('user', JSON.stringify(me.user));
+
       return data;
     } catch (error) {
       set({ loading: false });
@@ -36,7 +47,18 @@ export const useAuthStore = create((set) => ({
   },
 
   updateUser: (userData) => {
-    set({ user: userData, isAuthenticated: true });
-    localStorage.setItem('user', JSON.stringify(userData));
+    set((state) => {
+      const updatedUser = {
+        ...state.user,
+        ...userData,
+      };
+
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+
+      return {
+        user: updatedUser,
+        isAuthenticated: true,
+      };
+    });
   }
 }));

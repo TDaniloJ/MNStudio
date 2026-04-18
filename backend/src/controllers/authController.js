@@ -18,6 +18,7 @@ const emailService = require('../services/emailService');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/AppError');
 const logger = require('../utils/logger');
+const { sendEmail } = require('../utils/sendEmail');
 
 const generateToken = (user) => {
   return jwt.sign(
@@ -143,8 +144,13 @@ exports.login = catchAsync(async (req, res, next) => {
       email: user.email,
       role: user.role,
       avatar_url: user.avatar_url,
+      banner_url: user.banner_url, // ✅ ADD
+      bio: user.bio,               // ✅ ADD
+      email_verified_at: user.email_verified_at, // ✅ ADD
       google_sub: user.google_sub,
-      created_at: user.created_at
+      created_at: user.created_at,
+      two_factor_enabled: user.two_factor_enabled, // opcional
+      preferences: user.preferences               // opcional
     },
     token
   });
@@ -596,39 +602,43 @@ exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
 
-    // Validar email
     if (!email) {
       return res.status(400).json({ error: 'Email é obrigatório' });
     }
 
-    // Buscar usuário
     const user = await User.findOne({ where: { email } });
+
     if (!user) {
-      // Não revelar se email existe (por segurança)
-      return res.status(200).json({ 
-        message: 'Se o email existe, um link de recuperação foi enviado' 
+      return res.status(200).json({
+        message: 'Se o email existe, um link de recuperação foi enviado',
       });
     }
 
-    // Gerar token de recuperação
     const resetToken = jwt.sign(
-      { id: user.id, email: user.email },
+      { id: user.id },
       process.env.JWT_SECRET,
-      { expiresIn: '24h' }
+      { expiresIn: '1h' } // melhor reduzir
     );
 
-    // TODO: Enviar email com link de recuperação
-    // const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
-    // await sendEmail(email, 'Recuperar Senha', `Link: ${resetLink}`);
-    
-    console.log('📧 Email de recuperação deveria ser enviado para:', email);
-    console.log('🔗 Token:', resetToken);
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
 
-    res.status(200).json({ 
-      message: 'Se o email existe, um link de recuperação foi enviado' 
+    await sendEmail({
+      to: email,
+      subject: 'Recuperação de senha',
+      html: `
+        <h2>Recuperação de senha</h2>
+        <p>Clique no link abaixo para redefinir sua senha:</p>
+        <a href="${resetLink}">${resetLink}</a>
+        <p>Expira em 1 hora.</p>
+      `,
     });
+
+    res.status(200).json({
+      message: 'Se o email existe, um link de recuperação foi enviado',
+    });
+
   } catch (error) {
-    console.error('Erro ao solicitar recuperação de senha:', error);
+    console.error(error);
     res.status(500).json({ error: 'Erro ao processar solicitação' });
   }
 };
@@ -752,7 +762,8 @@ exports.googleLogin = async (req, res) => {
         password_hash: await bcrypt.hash(Math.random().toString(36), 10),
         avatar_url: picture || null,
         google_sub: googleSub || null,
-        role: 'reader'
+        role: 'reader',
+        email_verified_at: new Date()
       });
 
       console.log('✅ Usuário criado via Google:', user.id, user.email);
@@ -781,8 +792,13 @@ exports.googleLogin = async (req, res) => {
         email: user.email,
         role: user.role,
         avatar_url: user.avatar_url,
+        banner_url: user.banner_url,
+        bio: user.bio,
+        email_verified_at: user.email_verified_at, // 🔥 ESSENCIAL
         google_sub: user.google_sub,
-        created_at: user.created_at
+        created_at: user.created_at,
+        two_factor_enabled: user.two_factor_enabled,
+        preferences: user.preferences
       },
       token
     });
@@ -895,7 +911,7 @@ exports.updateBanner = async (req, res) => {
     }
 
     if (req.file) {
-      user.banner_url = `/uploads/avatars/${req.file.filename}`;
+      user.banner_url = `/uploads/banners/${req.file.filename}`;
       await user.save();
 
       return res.json({

@@ -1,22 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { 
-  BookOpen, 
-  Eye, 
-  Calendar, 
-  User, 
-  Heart, 
-  Share2,
-  ArrowLeft,
-  Clock,
-  Star,
-  CheckCircle,
-  XCircle,
-  PauseCircle,
-  Play,
-  CalendarDays,
-  Palette,
-  Image as ImageIcon
+import {
+  BookOpen, Eye, Calendar, User, Heart, Share2, ArrowLeft,
+  Clock, Star, CheckCircle, XCircle, PauseCircle, Play,
+  CalendarDays, Palette, Image as ImageIcon, ChevronUp, ChevronDown,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useMangaStore } from '../store/mangaStore';
@@ -29,55 +16,89 @@ import Button from '../components/common/Button';
 import Card from '../components/common/Card';
 import Loading from '../components/common/Loading';
 
+/* ── Helpers ──────────────────────────────────────────────────────── */
+
+const STATUS_MAP = {
+  ongoing:   { label: 'Em Andamento', color: 'text-green-400',  bg: 'bg-green-500/15 border-green-500/30',  icon: Play         },
+  completed: { label: 'Completo',     color: 'text-blue-400',   bg: 'bg-blue-500/15 border-blue-500/30',    icon: CheckCircle  },
+  hiatus:    { label: 'Em Hiato',     color: 'text-yellow-400', bg: 'bg-yellow-500/15 border-yellow-500/30', icon: PauseCircle },
+};
+
+const getStatus = (status) => STATUS_MAP[status] ?? { label: 'Desconhecido', color: 'text-gray-400', bg: 'bg-gray-500/15 border-gray-500/30', icon: XCircle };
+
+const relativeTime = (dateString) => {
+  if (!dateString) return '';
+  const diff = Date.now() - new Date(dateString).getTime();
+  const mins  = Math.floor(diff / 60000);
+  if (mins < 1)  return 'agora mesmo';
+  if (mins < 60) return `há ${mins} min`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs  < 24) return `há ${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  return `há ${days} dia${days > 1 ? 's' : ''}`;
+};
+
+/* ── Componente principal ─────────────────────────────────────────── */
+
 const MangaDetail = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
+  const { id }       = useParams();
+  const navigate     = useNavigate();
   const { currentManga, loading, fetchMangaById, clearCurrentManga } = useMangaStore();
-  const { isAuthenticated, user } = useAuthStore();
-  const [isFavorite, setIsFavorite] = useState(false);
+  const { isAuthenticated } = useAuthStore();
+
+  const [isFavorite,      setIsFavorite]      = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
-  const [imageError, setImageError] = useState(false);
-  const [sortOrder, setSortOrder] = useState('asc');
-  const [userRating, setUserRating] = useState(0);
-  const [ratingLoading, setRatingLoading] = useState(false);
+  const [imageError,      setImageError]      = useState(false);
+  const [sortOrder,       setSortOrder]       = useState('asc');
+  const [userRating,      setUserRating]      = useState(0);
+  const [ratingLoading,   setRatingLoading]   = useState(false);
   const [lastReadHistory, setLastReadHistory] = useState(null);
-  const [lastUpdatedInfo, setLastUpdatedInfo] = useState('');
+  const [hoveredStar,     setHoveredStar]     = useState(0);
 
   const sortedChapters = useMemo(() => {
-    const chapters = Array.isArray(currentManga?.chapters) ? currentManga.chapters : [];
-    return [...chapters].sort((a, b) => {
-      const aNum = Number(a.chapter_number || a.number || a.index || 0);
-      const bNum = Number(b.chapter_number || b.number || b.index || 0);
-      if (Number.isNaN(aNum) || Number.isNaN(bNum)) return 0;
-      return sortOrder === 'asc' ? aNum - bNum : bNum - aNum;
+    const chs = Array.isArray(currentManga?.chapters) ? currentManga.chapters : [];
+    return [...chs].sort((a, b) => {
+      const an = Number(a.chapter_number || a.number || a.index || 0);
+      const bn = Number(b.chapter_number || b.number || b.index || 0);
+      if (isNaN(an) || isNaN(bn)) return 0;
+      return sortOrder === 'asc' ? an - bn : bn - an;
     });
   }, [currentManga?.chapters, sortOrder]);
 
   const imageUrl = getImageUrl(currentManga?.cover_image);
-
-  const loadManga = async () => {
-    try {
-      await fetchMangaById(id);
-    } catch (error) {
-      toast.error('Erro ao carregar mangá');
-      navigate('/mangas');
-    }
-  };
+  const status   = getStatus(currentManga?.status);
 
   useEffect(() => {
-    loadManga();
+    const load = async () => {
+      try {
+        await fetchMangaById(id);
+      } catch {
+        toast.error('Erro ao carregar mangá');
+        navigate('/mangas');
+      }
+    };
+    load();
     return () => clearCurrentManga();
   }, [id]);
 
+  useEffect(() => {
+    if (!isAuthenticated || !currentManga?.id) return;
+    favoriteService.checkFavorite?.('manga', currentManga.id)
+      .then((res) => setIsFavorite(res?.isFavorite ?? false))
+      .catch(() => {});
+    readingHistoryService.getHistory?.(currentManga.id)
+      .then((res) => setLastReadHistory(res))
+      .catch(() => {});
+  }, [currentManga?.id, isAuthenticated]);
+
   const handleFavorite = async () => {
     if (!isAuthenticated) {
-      toast.error('Faça login para adicionar aos favoritos');
+      toast.error('Faça login para favoritar');
       navigate('/login');
       return;
     }
-
+    setFavoriteLoading(true);
     try {
-      setFavoriteLoading(true);
       if (isFavorite) {
         await favoriteService.removeFavorite('manga', id);
         setIsFavorite(false);
@@ -85,9 +106,9 @@ const MangaDetail = () => {
       } else {
         await favoriteService.addFavorite('manga', id);
         setIsFavorite(true);
-        toast.success('Adicionado aos favoritos');
+        toast.success('Adicionado aos favoritos!');
       }
-    } catch (error) {
+    } catch {
       toast.error('Erro ao atualizar favoritos');
     } finally {
       setFavoriteLoading(false);
@@ -96,385 +117,383 @@ const MangaDetail = () => {
 
   const handleShare = () => {
     if (navigator.share) {
-      navigator.share({
-        title: currentManga?.title,
-        text: currentManga?.description,
-        url: window.location.href
-      });
+      navigator.share({ title: currentManga?.title, url: window.location.href });
     } else {
       navigator.clipboard.writeText(window.location.href);
       toast.success('Link copiado!');
     }
   };
 
-  if (loading || !currentManga) {
-    return <Loading fullScreen />;
-  }
-
-  const getStatusIcon = () => {
-    switch (currentManga.status) {
-      case 'ongoing': return <Play className="w-4 h-4" />;
-      case 'completed': return <CheckCircle className="w-4 h-4" />;
-      case 'hiatus': return <PauseCircle className="w-4 h-4" />;
-      default: return <XCircle className="w-4 h-4" />;
+  const handleRating = async (stars) => {
+    if (!isAuthenticated) {
+      toast.error('Faça login para avaliar');
+      navigate('/login');
+      return;
+    }
+    setRatingLoading(true);
+    try {
+      await ratingService.submitRating('manga', currentManga.id, stars);
+      await fetchMangaById(id);
+      setUserRating(stars);
+      toast.success('Avaliação enviada!');
+    } catch {
+      toast.error('Erro ao enviar avaliação');
+    } finally {
+      setRatingLoading(false);
     }
   };
 
-  const getStatusColor = () => {
-    switch (currentManga.status) {
-      case 'ongoing': return 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700';
-      case 'completed': return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-700';
-      case 'hiatus': return 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700';
-      default: return 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700';
-    }
-  };
+  if (loading || !currentManga) return <Loading fullScreen />;
 
-  const getStatusText = () => {
-    switch (currentManga.status) {
-      case 'ongoing': return 'Em Andamento';
-      case 'completed': return 'Completo';
-      case 'hiatus': return 'Em Hiato';
-      default: return 'Desconhecido';
-    }
-  };
+  const firstChapter    = sortedChapters[0];
+  const continueChapter = lastReadHistory?.current_chapter;
+  const ratingValue     = Number(currentManga.rating) || 0;
+  const lastChapterDate = sortedChapters.at(-1)?.created_at;
 
-  const getRelativeTime = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    const diffMs = Date.now() - date.getTime();
-    const diffMinutes = Math.floor(diffMs / (1000 * 60));
-    if (diffMinutes < 1) return 'agora mesmo';
-    if (diffMinutes < 60) return `há ${diffMinutes} min`;
-    const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) return `há ${diffHours} h`;
-    const diffDays = Math.floor(diffHours / 24);
-    return `há ${diffDays} dia${diffDays > 1 ? 's' : ''}`;
-  };
-
-  // ✅ Função para obter imagem do capítulo
-  const getChapterImage = (chapter) => {
-    return chapter.thumbnail
-      ? getImageUrl(chapter.thumbnail)
-      : null;
-  };
+  // Normaliza genres para sempre ser {id, name}
+  const genres = (currentManga.genres ?? []).map((g) =>
+    typeof g === 'string' ? { id: g, name: g } : g
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Hero Section with Blur Background */}
-      <div className="relative bg-gradient-to-b from-gray-900 to-gray-800 text-white overflow-hidden dark:from-gray-800 dark:to-gray-900">
-        {/* Blurred Background Image */}
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0d0d0f]">
+
+      {/* ── HERO CINEMATIC ──────────────────────────────────────────── */}
+      <div className="relative overflow-hidden" style={{ minHeight: '520px' }}>
+
+        {/* Background: capa desfocada */}
         {!imageError && imageUrl && (
-          <div 
-            className="absolute inset-0 opacity-30 blur-2xl"
-            style={{
-              backgroundImage: `url(${imageUrl})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center'
-            }}
-          />
+          <div className="absolute inset-0">
+            <img
+              src={imageUrl}
+              alt=""
+              aria-hidden
+              className="w-full h-full object-cover object-top scale-110 blur-md brightness-30 dark:brightness-20"
+            />
+          </div>
         )}
+        {/* Gradientes */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/70 to-black/30" />
+        <div className="absolute inset-0 bg-gradient-to-t from-gray-50 dark:from-[#0d0d0f] via-transparent to-transparent" />
+        {/* grain */}
+        <div className="absolute inset-0 opacity-10 mix-blend-overlay pointer-events-none"
+          style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 512 512\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.75\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\'/%3E%3C/svg%3E")' }}
+        />
 
-        <div className="relative container-custom py-8">
-          {/* Back Button */}
-          <Button
-            variant="secondary"
-            size="sm"
+        <div className="relative container-custom pt-6 pb-12">
+
+          {/* Botão voltar */}
+          <button
             onClick={() => navigate(-1)}
-            className="mb-4 bg-white/10 hover:bg-white/20 text-white border-0"
+            className="inline-flex items-center gap-2 text-white/70 hover:text-white text-sm font-medium mb-8 transition-colors group"
           >
-            <ArrowLeft className="w-4 h-4 mr-2" />
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
             Voltar
-          </Button>
+          </button>
 
-          <div className="flex flex-col md:flex-row gap-8">
-            {/* Cover Image */}
-            <div className="flex-shrink-0">
-              <div className="w-full md:w-64 aspect-[2/3] rounded-xl overflow-hidden shadow-2xl border-4 border-white/10 group">
+          <div className="flex flex-col md:flex-row gap-8 items-start">
+
+            {/* Capa */}
+            <div className="flex-shrink-0 w-48 md:w-56">
+              <div
+                className="relative rounded-2xl overflow-hidden shadow-2xl"
+                style={{ aspectRatio: '2/3', filter: 'drop-shadow(0 20px 50px rgba(0,0,0,0.8))' }}
+              >
                 {!imageError && imageUrl ? (
                   <img
                     src={imageUrl}
                     alt={currentManga.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="w-full h-full object-cover"
                     onError={() => setImageError(true)}
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gray-700">
-                    <BookOpen className="w-16 h-16 text-gray-500" />
+                  <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                    <BookOpen className="w-12 h-12 text-gray-600" />
                   </div>
                 )}
+                {/* borda sutil */}
+                <div className="absolute inset-0 rounded-2xl ring-1 ring-white/10" />
               </div>
             </div>
 
             {/* Info */}
-            <div className="flex-1">
-              {/* Title */}
-              <h1 className="text-4xl md:text-5xl font-bold mb-3 leading-tight">
+            <div className="flex-1 min-w-0">
+
+              {/* Badges de topo */}
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${status.bg} ${status.color}`}>
+                  <status.icon className="w-3.5 h-3.5" />
+                  {status.label}
+                </span>
+                <span className="inline-flex items-center px-3 py-1 bg-primary-600/80 text-white rounded-full text-xs font-bold uppercase tracking-wide border border-primary-500/50">
+                  {currentManga.type ?? 'Mangá'}
+                </span>
+                {ratingValue > 0 && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-yellow-500/15 text-yellow-300 border border-yellow-500/30 rounded-full text-xs font-bold">
+                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                    {ratingValue.toFixed(1)}
+                  </span>
+                )}
+                {lastChapterDate && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 text-white/70 rounded-full text-xs border border-white/10">
+                    <Clock className="w-3 h-3" />
+                    {relativeTime(lastChapterDate)}
+                  </span>
+                )}
+              </div>
+
+              {/* Título */}
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white leading-[1.05] tracking-tight mb-2">
                 {currentManga.title}
               </h1>
-              
-              {/* Alternative Titles */}
+
+              {/* Títulos alternativos */}
               {currentManga.alternative_titles?.length > 0 && (
-                <p className="text-gray-300 text-lg mb-6 italic">
-                  {currentManga.alternative_titles.join(' • ')}
+                <p className="text-white/50 text-sm mb-4 italic">
+                  {currentManga.alternative_titles.join(' · ')}
                 </p>
               )}
 
-              {/* Meta Info */}
-              <div className="flex flex-wrap gap-3 mb-6">
-                <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border-2 font-semibold ${getStatusColor()}`}>
-                  {getStatusIcon()}
-                  {getStatusText()}
-                </span>
-
-                <span className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-full font-semibold uppercase text-sm">
-                  {currentManga.type}
-                </span>
-
-                <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full backdrop-blur-sm">
-                  <Eye className="w-4 h-4" />
-                  {formatNumber(currentManga.views)}
-                </span>
-
-                <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full backdrop-blur-sm">
-                  <BookOpen className="w-4 h-4" />
-                  {sortedChapters.length} caps
-                </span>
-
-                {(() => {
-                  const ratingValue = Number(currentManga.rating) || 0;
-                  return ratingValue > 0 ? (
-                    <span className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-500/20 rounded-full backdrop-blur-sm border border-yellow-500/30">
-                      <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                      {ratingValue.toFixed(1)}
-                    </span>
-                  ) : null;
-                })()}
-
-                {lastUpdatedInfo && (
-                  <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full text-white/80 text-sm border border-white/20">
-                    <CalendarDays className="w-4 h-4" />
-                    Atualizado {lastUpdatedInfo}
+              {/* Autor / Artista / Data */}
+              <div className="flex flex-wrap gap-5 mb-4 text-sm text-white/60">
+                {currentManga.author && (
+                  <span className="flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5" />
+                    <span className="text-white/40">Autor:</span>
+                    <span className="text-white/80 font-medium">{currentManga.author}</span>
                   </span>
                 )}
+                {currentManga.artist && currentManga.artist !== currentManga.author && (
+                  <span className="flex items-center gap-1.5">
+                    <Palette className="w-3.5 h-3.5" />
+                    <span className="text-white/40">Artista:</span>
+                    <span className="text-white/80 font-medium">{currentManga.artist}</span>
+                  </span>
+                )}
+                <span className="flex items-center gap-1.5">
+                  <CalendarDays className="w-3.5 h-3.5" />
+                  <span className="text-white/40">Adicionado:</span>
+                  <span className="text-white/80">{formatDate(currentManga.created_at)}</span>
+                </span>
+              </div>
 
-                {/* Rating UI */}
-                <div className="ml-3 flex items-center gap-1">
-                  {[1,2,3,4,5].map((s) => (
+              {/* Stats: views + capítulos */}
+              <div className="flex items-center gap-5 mb-4 text-sm text-white/50">
+                <span className="flex items-center gap-1.5">
+                  <Eye className="w-4 h-4" />
+                  {formatNumber(currentManga.views)} visualizações
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <BookOpen className="w-4 h-4" />
+                  {sortedChapters.length} capítulos
+                </span>
+              </div>
+
+              {/* Gêneros */}
+              {genres.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-5">
+                  {genres.map((genre, i) => (
+                    <Link
+                      key={genre.id ?? i}
+                      to={`/mangas?genre=${genre.id}`}
+                      className="px-2.5 py-1 bg-white/10 hover:bg-white/20 border border-white/10 hover:border-white/20 rounded-lg text-xs text-white/70 hover:text-white font-medium transition"
+                    >
+                      {genre.name}
+                    </Link>
+                  ))}
+                </div>
+              )}
+
+              {/* Sinopse */}
+              {currentManga.description && (
+                <p className="text-white/60 text-sm leading-relaxed mb-6 max-w-2xl line-clamp-3">
+                  {currentManga.description}
+                </p>
+              )}
+
+              {/* Avaliação por estrelas */}
+              <div className="flex items-center gap-2 mb-6">
+                <span className="text-xs text-white/40 font-medium">Avaliar:</span>
+                <div className="flex items-center gap-0.5">
+                  {[1, 2, 3, 4, 5].map((s) => (
                     <button
                       key={s}
-                      onClick={async (e) => {
-                        e.preventDefault();
-                        if (!isAuthenticated) {
-                          toast.error('Faça login para avaliar');
-                          navigate('/login');
-                          return;
-                        }
-                        try {
-                          setRatingLoading(true);
-                          await ratingService.submitRating('manga', currentManga.id, s);
-                          await fetchMangaById(id);
-                          setUserRating(s); 
-                          toast.success('Avaliação enviada');                  
-
-                        } catch (err) {
-                          toast.error('Erro ao enviar avaliação');
-                        } finally {
-                          setRatingLoading(false);
-                        }
-                      }}
-                      className={`p-1 transform transition duration-150 ${userRating >= s ? 'text-yellow-400' : 'text-gray-300'} hover:scale-110`}
                       disabled={ratingLoading}
+                      onClick={() => handleRating(s)}
+                      onMouseEnter={() => setHoveredStar(s)}
+                      onMouseLeave={() => setHoveredStar(0)}
+                      className="p-1 transition-transform hover:scale-125 disabled:opacity-50"
                       aria-label={`Avaliar ${s} estrelas`}
-                      title={`Avaliar ${s} estrelas`}
                     >
-                      <Star className="w-4 h-4" />
+                      <Star
+                        className={`w-5 h-5 transition-colors ${
+                          (hoveredStar || userRating) >= s
+                            ? 'fill-yellow-400 text-yellow-400'
+                            : 'text-white/20'
+                        }`}
+                      />
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Author & Artist */}
-              <div className="flex flex-wrap gap-6 mb-6 text-sm">
-                {currentManga.author && (
-                  <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-gray-400" />
-                    <span className="text-gray-400">Autor:</span>
-                    <span className="font-medium">{currentManga.author}</span>
-                  </div>
-                )}
-                {currentManga.artist && currentManga.artist !== currentManga.author && (
-                  <div className="flex items-center gap-2">
-                    <Palette className="w-4 h-4 text-gray-400" />
-                    <span className="text-gray-400">Artista:</span>
-                    <span className="font-medium">{currentManga.artist}</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-2">
-                  <CalendarDays className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-400">Adicionado:</span>
-                  <span className="font-medium">{formatDate(currentManga.created_at)}</span>
-                </div>
-              </div>
-
-              {/* Genres */}
-              <div className="flex flex-wrap gap-2 mb-6">
-                {currentManga.genres?.map((genre) => (
-                  <Link
-                    key={genre.id}
-                    to={`/mangas?genre=${genre.id}`}
-                    className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition backdrop-blur-sm"
-                  >
-                    {genre.name}
-                  </Link>
-                ))}
-              </div>
-
-              {/* Synopsis */}
-              <div className="flex flex-wrap gap-2 mb-6">
-                <div className="prose max-w-none">
-                  <p className="text-gray-700 leading-relaxed whitespace-pre-line dark:text-gray-300">
-                    {currentManga.description || 'Sem descrição disponível.'}
-                  </p>
-                </div>
-              </div>
-
-
-              {/* Action Buttons */}
+              {/* CTAs */}
               <div className="flex flex-wrap gap-3">
-                {sortedChapters.length > 0 && (
-                  <Link to={`/manga/${currentManga.id}/chapter/${sortedChapters[0].id}`}>
-                    <Button size="lg" className="bg-primary-600 hover:bg-primary-700">
-                      <Play className="w-5 h-5 mr-2" />
-                      Começar a Ler
-                    </Button>
+                {firstChapter && (
+                  <Link to={`/manga/${currentManga.id}/chapter/${firstChapter.id}`}>
+                    <button className="group inline-flex items-center gap-2.5 px-6 py-3 bg-white text-gray-900 font-bold rounded-2xl hover:bg-gray-100 transition shadow-lg shadow-black/30 hover:scale-[1.02]">
+                      <Play className="w-4 h-4" />
+                      Começar a ler
+                      <ArrowLeft className="w-4 h-4 rotate-180 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
                   </Link>
                 )}
 
-                {lastReadHistory?.current_chapter && (
-                  <Link to={`/manga/${currentManga.id}/chapter/${lastReadHistory.current_chapter.id}`}>
-                    <Button size="lg" className="bg-green-600 hover:bg-green-700">
-                      <Play className="w-5 h-5 mr-2" />
-                      Continuar cap. {Math.trunc(Number(lastReadHistory.current_chapter.chapter_number || 0))}
-                    </Button>
+                {continueChapter && (
+                  <Link to={`/manga/${currentManga.id}/chapter/${continueChapter.id}`}>
+                    <button className="inline-flex items-center gap-2.5 px-6 py-3 bg-green-500/20 text-green-300 border border-green-500/30 font-bold rounded-2xl hover:bg-green-500/30 transition">
+                      <Play className="w-4 h-4" />
+                      Continuar cap. {Math.trunc(Number(continueChapter.chapter_number || 0))}
+                    </button>
                   </Link>
                 )}
 
-                <Button
-                  variant={isFavorite ? 'danger' : 'secondary'}
-                  size="lg"
+                <button
                   onClick={handleFavorite}
-                  loading={favoriteLoading}
-                  className={isFavorite ? '' : 'bg-white/10 hover:bg-white/20 border-0 backdrop-blur-sm'}
+                  disabled={favoriteLoading}
+                  className={`inline-flex items-center gap-2.5 px-5 py-3 rounded-2xl font-semibold text-sm border transition ${
+                    isFavorite
+                      ? 'bg-red-500/20 text-red-300 border-red-500/30 hover:bg-red-500/30'
+                      : 'bg-white/10 text-white/80 border-white/10 hover:bg-white/20'
+                  }`}
                 >
-                  <Heart className={`w-5 h-5 mr-2 ${isFavorite ? 'fill-current' : ''}`} />
+                  <Heart className={`w-4 h-4 ${isFavorite ? 'fill-current' : ''}`} />
                   {isFavorite ? 'Favoritado' : 'Favoritar'}
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="lg"
+                </button>
+
+                <button
                   onClick={handleShare}
-                  className="bg-white/10 hover:bg-white/20 border-0 backdrop-blur-sm"
+                  className="inline-flex items-center gap-2 px-4 py-3 bg-white/10 text-white/70 border border-white/10 rounded-2xl hover:bg-white/20 hover:text-white transition"
+                  aria-label="Compartilhar"
                 >
-                  <Share2 className="w-5 h-5" />
-                </Button>
+                  <Share2 className="w-4 h-4" />
+                </button>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Content Section */}
+      {/* ── CONTEÚDO PRINCIPAL ──────────────────────────────────────── */}
       <div className="container-custom py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
+
+          {/* ── Coluna principal ────────────────────────────────────── */}
           <div className="lg:col-span-2 space-y-6">
 
-            {/* Synopsis */}
+            {/* Sinopse completa */}
             <Card className="p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2 dark:text-white">
-                <BookOpen className="w-6 h-6 text-primary-600" />
+              <h2 className="text-xl font-black text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-primary-500" />
                 Sinopse
               </h2>
-              <div className="prose max-w-none">
-                <p className="text-gray-700 leading-relaxed whitespace-pre-line dark:text-gray-300">
-                  {currentManga.description || 'Sem descrição disponível.'}
-                </p>
-              </div>
+              <p className="text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-line">
+                {currentManga.description || 'Sem descrição disponível.'}
+              </p>
             </Card>
 
-            {/* Chapters List */}
+            {/* Lista de capítulos */}
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2 dark:text-white">
-                  <BookOpen className="w-6 h-6 text-primary-600" />
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-primary-500" />
                   Capítulos
-                  <span className="text-lg font-normal text-gray-500 dark:text-gray-400">
+                  <span className="text-base font-normal text-gray-400 dark:text-gray-500">
                     ({sortedChapters.length})
                   </span>
                 </h2>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                <button
+                  onClick={() => setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
                 >
-                  {sortOrder === 'asc' ? '↑ Crescente' : '↓ Decrescente'}
-                </Button>
+                  {sortOrder === 'asc'
+                    ? <><ChevronUp className="w-3.5 h-3.5" /> Crescente</>
+                    : <><ChevronDown className="w-3.5 h-3.5" /> Decrescente</>}
+                </button>
               </div>
 
               {sortedChapters.length === 0 ? (
-                <div className="text-center py-12">
-                  <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4 dark:text-gray-600" />
-                  <p className="text-gray-500 text-lg">Nenhum capítulo disponível ainda</p>
+                <div className="flex flex-col items-center justify-center py-16 text-gray-300 dark:text-gray-700">
+                  <BookOpen className="w-12 h-12 mb-3" />
+                  <p className="text-gray-400 dark:text-gray-500 font-medium">
+                    Nenhum capítulo disponível ainda
+                  </p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {sortedChapters.map((chapter, index) => {
-                    const chapterImage = getChapterImage(chapter);
-                    
+                <div className="space-y-1">
+                  {sortedChapters.map((chapter) => {
+                    const chapterImg = chapter.thumbnail
+                      ? getImageUrl(chapter.thumbnail)
+                      : null;
+                    const isContinue = continueChapter?.id === chapter.id;
+
                     return (
                       <Link
                         key={chapter.id}
                         to={`/manga/${currentManga.id}/chapter/${chapter.id}`}
-                        className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-all group border border-transparent hover:border-primary-200 hover:shadow-md dark:hover:bg-gray-800 dark:hover:border-primary-700"
+                        className={`group flex items-center justify-between p-3.5 rounded-xl transition-all border ${
+                          isContinue
+                            ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800'
+                            : 'border-transparent hover:bg-gray-50 dark:hover:bg-gray-800/60 hover:border-gray-200 dark:hover:border-gray-700'
+                        }`}
                       >
-                        <div className="flex items-center gap-4">
-                          {/* ✅ Thumbnail do capítulo */}
-                          <div className="w-12 h-16 rounded-lg overflow-hidden bg-primary-100 flex items-center justify-center flex-shrink-0 group-hover:ring-2 group-hover:ring-primary-500 transition-all dark:bg-primary-900/50">
-                            {chapterImage ? (
+                        <div className="flex items-center gap-3">
+                          {/* Thumbnail */}
+                          <div className="w-10 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 group-hover:ring-2 group-hover:ring-primary-500/50 transition">
+                            {chapterImg ? (
                               <img
-                                src={chapterImage}
-                                alt={`Capítulo ${chapter.chapter_number}`}
+                                src={chapterImg}
+                                alt={`Cap. ${chapter.chapter_number}`}
                                 className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  e.target.parentElement.innerHTML = `<span class="text-primary-600 font-bold dark:text-primary-400">${parseFloat(chapter.chapter_number).toFixed(0)}</span>`;
-                                }}
+                                onError={(e) => { e.target.style.display = 'none'; }}
                               />
                             ) : (
-                              <div className="flex flex-col items-center justify-center text-primary-600 dark:text-primary-400">
-                                <ImageIcon className="w-5 h-5 mb-1 opacity-50" />
-                                <span className="text-xs font-semibold">{parseFloat(chapter.chapter_number).toFixed(0)}</span>
-                              </div>
+                              <span className="text-xs font-black text-gray-400 dark:text-gray-500">
+                                {parseFloat(chapter.chapter_number).toFixed(0)}
+                              </span>
                             )}
                           </div>
-                          
+
                           <div>
-                            <h3 className="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors dark:text-gray-200 dark:group-hover:text-primary-400">
-                              Capítulo {parseFloat(chapter.chapter_number).toFixed(0)}
-                              {chapter.title && ` - ${chapter.title}`}
-                            </h3>
-                            <div className="flex items-center gap-3 text-sm text-gray-500 mt-1 dark:text-gray-400">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                                Capítulo {parseFloat(chapter.chapter_number).toFixed(0)}
+                                {chapter.title && (
+                                  <span className="font-normal text-gray-500 dark:text-gray-400"> — {chapter.title}</span>
+                                )}
+                              </p>
+                              {isContinue && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 bg-green-500/20 text-green-600 dark:text-green-400 rounded-md">
+                                  continuar
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                               <span className="flex items-center gap-1">
                                 <Calendar className="w-3 h-3" />
                                 {formatDate(chapter.created_at)}
                               </span>
-                              <span className="flex items-center gap-1">
-                                <Eye className="w-3 h-3" />
-                                {formatNumber(chapter.views)}
-                              </span>
+                              {chapter.views > 0 && (
+                                <span className="flex items-center gap-1">
+                                  <Eye className="w-3 h-3" />
+                                  {formatNumber(chapter.views)}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
-                        <Play className="w-5 h-5 text-gray-400 group-hover:text-primary-600 transition-colors dark:group-hover:text-primary-400" />
+
+                        <Play className="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-primary-500 transition flex-shrink-0" />
                       </Link>
                     );
                   })}
@@ -483,91 +502,85 @@ const MangaDetail = () => {
             </Card>
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Quick Stats */}
-            <Card className="p-6 ">
-              <Clock className="w-6 h-6 text-primary-600" />
-              <h3 className="font-bold text-gray-900 mb-4 text-lg dark:text-white">  Detalhes</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
-                    <Star className="w-4 h-4" />
-                    <span>Avaliação</span>
+          {/* ── Sidebar ─────────────────────────────────────────────── */}
+          <div className="space-y-5">
+
+            {/* Detalhes */}
+            <Card className="p-5">
+              <h3 className="font-black text-gray-900 dark:text-white mb-4 text-base">Detalhes</h3>
+              <div className="space-y-3">
+                {[
+                  {
+                    icon: <Star className="w-4 h-4" />,
+                    label: 'Avaliação',
+                    value: ratingValue > 0
+                      ? <span className="flex items-center gap-1"><Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />{ratingValue.toFixed(1)}</span>
+                      : '0.0',
+                  },
+                  {
+                    icon: <status.icon className="w-4 h-4" />,
+                    label: 'Status',
+                    value: <span className={status.color}>{status.label}</span>,
+                  },
+                  {
+                    icon: <BookOpen className="w-4 h-4" />,
+                    label: 'Tipo',
+                    value: currentManga.type ?? 'Mangá',
+                  },
+                  {
+                    icon: <Eye className="w-4 h-4" />,
+                    label: 'Views',
+                    value: formatNumber(currentManga.views),
+                  },
+                  {
+                    icon: <CalendarDays className="w-4 h-4" />,
+                    label: 'Última atualização',
+                    value: lastChapterDate ? relativeTime(lastChapterDate) : 'N/A',
+                  },
+                ].map(({ icon, label, value }) => (
+                  <div key={label} className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                      {icon}{label}
+                    </span>
+                    <span className="font-semibold text-gray-900 dark:text-gray-200">{value}</span>
                   </div>
-                  <span className="font-semibold text-gray-900 dark:text-gray-200">
-                    {(() => {
-                      const ratingValue = Number(currentManga.rating) || 0;
-                      return ratingValue > 0 ? (
-                        <span className="flex items-center gap-1">
-                          <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                          {ratingValue.toFixed(1)}
-                        </span>
-                      ) : 'N/A';
-                    })()}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
-                    <Clock className="w-4 h-4" />
-                    <span>Status</span>
-                  </div>
-                  <span className={`font-semibold ${
-                    currentManga.status === 'ongoing' ? 'text-green-600 dark:text-green-400' :
-                    currentManga.status === 'completed' ? 'text-blue-600 dark:text-blue-400' :
-                    'text-yellow-600 dark:text-yellow-400'
-                  }`}>
-                    {getStatusText()}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
-                    <BookOpen className="w-4 h-4" />
-                    <span>Tipo</span>
-                  </div>
-                  <span className="font-semibold text-gray-900 dark:text-gray-200">
-                    {currentManga.type}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
-                    <CalendarDays className="w-4 h-4" />
-                    <span>Atualizado</span>
-                  </div>
-                  <span className="font-semibold text-gray-900 dark:text-gray-200">
-                    {formatDate(currentManga.created_at)}
-                  </span>
-                </div>
+                ))}
               </div>
             </Card>
 
-            {/* Uploader Info */}
+            {/* Uploader */}
             {currentManga.uploader && (
-              <Card className="p-6">
-                <h3 className="font-bold text-gray-900 mb-4 text-lg dark:text-white">Enviado por</h3>
+              <Card className="p-5">
+                <h3 className="font-black text-gray-900 dark:text-white mb-3 text-base">
+                  Enviado por
+                </h3>
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                  <div className="w-10 h-10 bg-primary-600 dark:bg-primary-700 rounded-xl flex items-center justify-center text-white font-black text-lg flex-shrink-0">
                     {currentManga.uploader.username?.charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900 dark:text-gray-200">
+                    <p className="font-semibold text-gray-900 dark:text-white text-sm">
                       {currentManga.uploader.username}
                     </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {currentManga.uploader.role === 'admin' ? 'Administrador' : 'Usuário'}
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {currentManga.uploader.role === 'admin' ? 'Administrador' : 'Colaborador'}
                     </p>
                   </div>
                 </div>
               </Card>
             )}
 
-            {/* Tip Card */}
-            <Card className="p-6 bg-gradient-to-br from-primary-50 to-primary-100 border-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 dark:border-primary-700">
-              <h3 className="font-bold text-gray-900 mb-3 dark:text-white flex items-center gap-2">
-                <span>💡</span> Dica de Leitura
+            {/* Dica de leitura */}
+            <Card className="p-5 bg-gradient-to-br from-primary-50 to-primary-100/50 border-primary-200 dark:from-primary-900/20 dark:to-primary-800/10 dark:border-primary-800">
+              <h3 className="font-black text-gray-900 dark:text-white mb-2 text-sm flex items-center gap-2">
+                <span>💡</span> Dica
               </h3>
-              <p className="text-sm text-gray-700 dark:text-gray-300">
-                Use as setas do teclado <kbd className="px-2 py-1 bg-white rounded shadow-sm dark:bg-gray-700">←</kbd> <kbd className="px-2 py-1 bg-white rounded shadow-sm dark:bg-gray-700">→</kbd> para navegar entre as páginas durante a leitura!
+              <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                Use{' '}
+                <kbd className="px-1.5 py-0.5 bg-white dark:bg-gray-800 rounded-md shadow-sm text-[10px] font-bold">←</kbd>
+                {' '}e{' '}
+                <kbd className="px-1.5 py-0.5 bg-white dark:bg-gray-800 rounded-md shadow-sm text-[10px] font-bold">→</kbd>
+                {' '}para navegar entre páginas durante a leitura.
               </p>
             </Card>
           </div>

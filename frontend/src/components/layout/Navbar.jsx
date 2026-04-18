@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, Menu, X, User, LogOut, Settings, Heart, History, Search } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import {
+  BookOpen, Menu, X, User, LogOut, Settings,
+  Heart, History, Search, Crown, Bell,
+} from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { getImageUrl } from '../../utils/formatters';
 import Button from '../common/Button';
@@ -8,17 +11,58 @@ import ThemeToggle from '../common/ThemeToggle';
 import NotificationCenter from '../common/NotificationCenter';
 import CoinNavbarBadge from '../common/CoinNavbarBadge';
 
-const Navbar = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const { isAuthenticated, user, logout } = useAuthStore();
-  const navigate = useNavigate();
+/* ── Links de navegação principal ─────────────────────────────── */
+const NAV_LINKS = [
+  { to: '/mangas',      label: 'Mangás'     },
+  { to: '/novels',      label: 'Novels'     },
+  { to: '/rankings',    label: 'Rankings'   },
+  { to: '/subscription',label: 'Assinatura' },
+];
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
+const USER_MENU_LINKS = [
+  { to: '/profile',      label: 'Perfil',     icon: User    },
+  { to: '/favorites',    label: 'Favoritos',  icon: Heart   },
+  { to: '/history',      label: 'Histórico',  icon: History },
+  { to: '/subscription', label: 'Assinatura', icon: Crown   },
+];
+
+/* ── Componente principal ─────────────────────────────────────── */
+
+const Navbar = () => {
+  const [mobileOpen,   setMobileOpen]   = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [searchQuery,  setSearchQuery]  = useState('');
+  const [searchFocus,  setSearchFocus]  = useState(false);
+  const [scrolled,     setScrolled]     = useState(false);
+
+  const { isAuthenticated, user, logout } = useAuthStore();
+  const navigate  = useNavigate();
+  const location  = useLocation();
+  const menuRef   = useRef(null);
+
+  // Sombra ao rolar
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 4);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Fechar menu ao mudar de rota
+  useEffect(() => {
+    setMobileOpen(false);
+    setUserMenuOpen(false);
+  }, [location.pathname]);
+
+  // Fechar menu de usuário ao clicar fora
+  useEffect(() => {
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setUserMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleLogout = () => { logout(); navigate('/'); };
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -28,279 +72,251 @@ const Navbar = () => {
     }
   };
 
+  const isActive = (to) => location.pathname === to;
+
   return (
-    <nav className="bg-white dark:bg-gray-800 shadow-md dark:shadow-gray-900/50 sticky top-0 z-40 transition-colors duration-200">
-      <div className="container-custom">
-        <div className="flex items-center justify-between h-16 gap-4">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 flex-shrink-0">
-            <BookOpen className="w-8 h-8 text-primary-600 dark:text-primary-400" />
-            <span className="text-xl font-bold text-gray-900 dark:text-white hidden sm:block">MN Studio</span>
-          </Link>
+    <>
+      <nav className={`sticky top-0 z-40 w-full bg-white/95 dark:bg-gray-950/95 backdrop-blur-md border-b border-gray-100 dark:border-gray-800/60 transition-all duration-200 ${scrolled ? 'shadow-sm shadow-black/5' : ''}`}>
+        <div className="container-custom">
+          <div className="flex items-center h-14 gap-3">
 
-          {/* Search Bar - Desktop */}
-          <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-xl">
-            <div className="relative w-full">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Pesquisar mangás, novels..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-400 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-              />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
-            </div>
-          </form>
-
-          {/* Desktop Menu */}
-          <div className="hidden md:flex items-center gap-6">
-            <Link to="/rankings" className="text-gray-700 hover:text-primary-600 font-medium transition dark:text-gray-300 dark:hover:text-primary-400">
-              Rankings
-            </Link>
-            <Link to="/subscription" className="text-gray-700 hover:text-primary-600 font-medium transition dark:text-gray-300 dark:hover:text-primary-400">
-              Assinatura
-            </Link>
-            <Link 
-              to="/search" 
-              className="relative p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
-            >
-              <Search className="w-5 h-5" />
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-2 flex-shrink-0 group">
+              <div className="p-1.5 bg-primary-600 dark:bg-primary-500 rounded-lg group-hover:bg-primary-700 dark:group-hover:bg-primary-600 transition-colors">
+                <BookOpen className="w-4 h-4 text-white" />
+              </div>
+              <span className="text-base font-black text-gray-900 dark:text-white hidden sm:block tracking-tight">
+                MN Studio
+              </span>
             </Link>
 
-            {/* Notification Center */}
-            {isAuthenticated && <NotificationCenter />}
-
-            {/* Coins */}
-            {isAuthenticated && <CoinNavbarBadge />}
-
-            {/* Theme Toggle */}
-            <ThemeToggle />
-
-            {isAuthenticated ? (
-              <div className="relative">
-                <button
-                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="flex items-center gap-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+            {/* Nav links desktop */}
+            <div className="hidden md:flex items-center gap-0.5 ml-2">
+              {NAV_LINKS.map((l) => (
+                <Link
+                  key={l.to}
+                  to={l.to}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    isActive(l.to)
+                      ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/60'
+                  }`}
                 >
-                  <div className="w-8 h-8 bg-primary-600 dark:bg-primary-500 rounded-full flex items-center justify-center text-white font-semibold overflow-hidden">
-                    {user?.avatar_url ? (
-                      <img
-                        src={getImageUrl(user.avatar_url)}
-                        alt="Avatar"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      user?.username?.charAt(0).toUpperCase()
-                    )}
-                  </div>
-                  <span className="font-medium dark:text-white">{user?.username}</span>
-                </button>
+                  {l.label}
+                </Link>
+              ))}
+            </div>
 
-                {isUserMenuOpen && (
-                  <>
-                    <div 
-                      className="fixed inset-0 z-10" 
-                      onClick={() => setIsUserMenuOpen(false)}
-                    />
-                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-900/50 py-2 z-20 border border-gray-200 dark:border-gray-700">
-                      <Link
-                        to="/profile"
-                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition text-gray-700 dark:text-gray-200"
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        <User className="w-4 h-4" />
-                        Perfil
-                      </Link>
-                      <Link
-                        to="/favorites"
-                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition text-gray-700 dark:text-gray-200"
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        <Heart className="w-4 h-4" />
-                        Favoritos
-                      </Link>
-                      <Link
-                        to="/subscription"
-                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition text-gray-700 dark:text-gray-200"
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        <BookOpen className="w-4 h-4" />
-                        Assinatura
-                      </Link>
-                      <Link
-                        to="/history"
-                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition text-gray-700 dark:text-gray-200"
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        <History className="w-4 h-4" />
-                        Histórico
-                      </Link>
-                      {(user?.role === 'admin' || user?.role === 'uploader') && (
-                        <Link
-                          to="/admin"
-                          className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition text-gray-700 dark:text-gray-200"
-                          onClick={() => setIsUserMenuOpen(false)}
-                        >
-                          <Settings className="w-4 h-4" />
-                          Administração
-                        </Link>
+            {/* Barra de pesquisa desktop */}
+            <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-sm mx-auto">
+              <div className={`relative w-full transition-all duration-200 ${searchFocus ? 'scale-[1.01]' : ''}`}>
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setSearchFocus(true)}
+                  onBlur={() => setSearchFocus(false)}
+                  placeholder="Buscar obras..."
+                  className="w-full pl-8 pr-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-800/80 border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:border-primary-400/50 focus:bg-white dark:focus:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 transition-all"
+                />
+              </div>
+            </form>
+
+            {/* Ações à direita */}
+            <div className="flex items-center gap-1 ml-auto">
+              {/* Pesquisa mobile */}
+              <Link
+                to="/search"
+                className="md:hidden p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                <Search className="w-4 h-4" />
+              </Link>
+
+              {isAuthenticated && (
+                <>
+                  <NotificationCenter />
+                  <CoinNavbarBadge />
+                </>
+              )}
+
+              <ThemeToggle />
+
+              {isAuthenticated ? (
+                /* ── Menu de usuário ─────────────────────────── */
+                <div className="relative" ref={menuRef}>
+                  <button
+                    onClick={() => setUserMenuOpen((v) => !v)}
+                    className={`flex items-center gap-2 pl-1.5 pr-2 py-1 rounded-xl transition-all ${
+                      userMenuOpen ? 'bg-gray-100 dark:bg-gray-800' : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    {/* Avatar */}
+                    <div className="w-7 h-7 rounded-lg bg-primary-600 dark:bg-primary-500 flex items-center justify-center text-white text-xs font-bold overflow-hidden flex-shrink-0">
+                      {user?.avatar_url ? (
+                        <img src={getImageUrl(user.avatar_url)} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        user?.username?.charAt(0).toUpperCase()
                       )}
-                      <hr className="my-2 border-gray-200 dark:border-gray-700" />
-                      <button
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          handleLogout();
-                        }}
-                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition w-full text-left text-red-600 dark:text-red-400"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        Sair
-                      </button>
                     </div>
-                  </>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => navigate('/login')}>
-                  Entrar
-                </Button>
-                <Button size="sm" onClick={() => navigate('/register')}>
-                  Cadastrar
-                </Button>
-              </div>
-            )}
-          </div>
+                    <div className="hidden sm:block text-left">
+                      <p className="text-xs font-semibold text-gray-900 dark:text-white leading-none">
+                        {user?.username}
+                      </p>
+                      <p className="text-[10px] text-gray-400 dark:text-gray-500 capitalize leading-none mt-0.5">
+                        {user?.role}
+                      </p>
+                    </div>
+                  </button>
 
-          {/* Mobile Menu Button */}
-          <div className="flex items-center gap-2 md:hidden">
-            <ThemeToggle />
-            <button
-              className="p-2 text-gray-700 dark:text-gray-300"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-            >
-              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
+                  {/* Dropdown */}
+                  {userMenuOpen && (
+                    <div className="absolute right-0 top-full mt-2 w-52 bg-white dark:bg-gray-900 rounded-2xl shadow-xl shadow-black/10 dark:shadow-black/40 border border-gray-100 dark:border-gray-800 overflow-hidden z-50">
+                      {/* Header */}
+                      <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">{user?.username}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
+                      </div>
+
+                      {/* Links */}
+                      <div className="py-1.5">
+                        {USER_MENU_LINKS.map(({ to, label, icon: Icon }) => (
+                          <Link
+                            key={to}
+                            to={to}
+                            className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 hover:text-gray-900 dark:hover:text-white transition-colors"
+                          >
+                            <Icon className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+                            {label}
+                          </Link>
+                        ))}
+                        {(user?.role === 'admin' || user?.role === 'uploader') && (
+                          <Link
+                            to="/admin"
+                            className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 hover:text-gray-900 dark:hover:text-white transition-colors"
+                          >
+                            <Settings className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+                            Administração
+                          </Link>
+                        )}
+                      </div>
+
+                      {/* Logout */}
+                      <div className="border-t border-gray-100 dark:border-gray-800 py-1.5">
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        >
+                          <LogOut className="w-3.5 h-3.5" />
+                          Sair
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* ── Botões de auth ───────────────────────────── */
+                <div className="flex items-center gap-1.5 ml-1">
+                  <button
+                    onClick={() => navigate('/login')}
+                    className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  >
+                    Entrar
+                  </button>
+                  <button
+                    onClick={() => navigate('/register')}
+                    className="px-3 py-1.5 text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 rounded-lg transition-colors"
+                  >
+                    Cadastrar
+                  </button>
+                </div>
+              )}
+
+              {/* Mobile hamburger */}
+              <button
+                onClick={() => setMobileOpen((v) => !v)}
+                className="md:hidden p-2 ml-1 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                {mobileOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Mobile Search */}
-        <form onSubmit={handleSearch} className="md:hidden pb-4">
-          <div className="relative">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Pesquisar..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-            />
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
-          </div>
-        </form>
+        {/* ── Menu mobile ─────────────────────────────────────── */}
+        {mobileOpen && (
+          <div className="md:hidden border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950">
+            {/* Busca mobile */}
+            <form onSubmit={handleSearch} className="px-4 pt-3 pb-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Buscar obras..."
+                  className="w-full pl-8 pr-3 py-2 text-sm bg-gray-100 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/40 text-gray-900 dark:text-white placeholder-gray-400"
+                />
+              </div>
+            </form>
 
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden pb-4 border-t border-gray-200 dark:border-gray-700 mt-2 pt-4">
-            <Link
-              to="/mangas"
-              className="block py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Mangás
-            </Link>
-            <Link
-              to="/novels"
-              className="block py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Novels
-            </Link>
-            <Link
-              to="/search"
-              className="block py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Pesquisa Avançada
-            </Link>
+            {/* Nav links */}
+            <div className="px-3 pb-2 space-y-0.5">
+              {NAV_LINKS.map((l) => (
                 <Link
-                  to="/subscription"
-                  className="block py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition"
-                  onClick={() => setIsMenuOpen(false)}
+                  key={l.to}
+                  to={l.to}
+                  className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    isActive(l.to)
+                      ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60'
+                  }`}
                 >
-                  Assinatura
+                  {l.label}
                 </Link>
-            
+              ))}
+            </div>
+
             {isAuthenticated ? (
-              <>
-                <hr className="my-2 border-gray-200 dark:border-gray-700" />
-                <Link
-                  to="/profile"
-                  className="block py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Perfil
-                </Link>
-                <Link
-                  to="/favorites"
-                  className="block py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Favoritos
-                </Link>
-                <Link
-                  to="/history"
-                  className="block py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Histórico
-                </Link>
-                {(user?.role === 'admin' || user?.role === 'uploader') && (
+              <div className="border-t border-gray-100 dark:border-gray-800 px-3 py-2 space-y-0.5">
+                {USER_MENU_LINKS.map(({ to, label, icon: Icon }) => (
                   <Link
-                    to="/admin"
-                    className="block py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition"
-                    onClick={() => setIsMenuOpen(false)}
+                    key={to}
+                    to={to}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors"
                   >
+                    <Icon className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                    {label}
+                  </Link>
+                ))}
+                {(user?.role === 'admin' || user?.role === 'uploader') && (
+                  <Link to="/admin" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
+                    <Settings className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                     Administração
                   </Link>
                 )}
                 <button
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    handleLogout();
-                  }}
-                  className="block py-2 text-red-600 dark:text-red-400 w-full text-left hover:text-red-700 dark:hover:text-red-300 transition"
+                  onClick={handleLogout}
+                  className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                 >
+                  <LogOut className="w-4 h-4" />
                   Sair
                 </button>
-              </>
+              </div>
             ) : (
-              <>
-                <hr className="my-2 border-gray-200 dark:border-gray-700" />
-                <Button
-                  variant="outline"
-                  className="w-full mb-2 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    navigate('/login');
-                  }}
-                >
+              <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-3 flex gap-2">
+                <button onClick={() => navigate('/login')} className="flex-1 py-2 text-sm font-medium border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                   Entrar
-                </Button>
-                <Button
-                  className="w-full"
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    navigate('/register');
-                  }}
-                >
+                </button>
+                <button onClick={() => navigate('/register')} className="flex-1 py-2 text-sm font-bold bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors">
                   Cadastrar
-                </Button>
-              </>
+                </button>
+              </div>
             )}
           </div>
         )}
-      </div>
-    </nav>
+      </nav>
+    </>
   );
 };
 

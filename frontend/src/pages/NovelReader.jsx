@@ -62,6 +62,10 @@ const NovelReader = () => {
 
   const [autoAdvance, setAutoAdvance] = useState(false);
 
+  const [backgroundColor, setBackgroundColor] = useState(
+    localStorage.getItem('mangaBgColor') || 'black'
+  );
+
   const formatContent = (content) => {
     if (!content) return '';
     
@@ -282,8 +286,16 @@ useEffect(() => {
       showProgress
       , autoAdvance
     };
+    localStorage.setItem('mangaBgColor', backgroundColor);
     localStorage.setItem('novelReaderPreferences', JSON.stringify(prefs));
     toast.success('Preferências salvas');
+  };
+
+  const bgColors = {
+    black: 'bg-black',
+    dark: 'bg-gray-900',
+    gray: 'bg-gray-100',
+    white: 'bg-white'
   };
 
   const resetPreferences = () => {
@@ -298,22 +310,12 @@ useEffect(() => {
     toast.success('Preferências resetadas');
   };
 
-  const toggleBookmark = async () => {
-    try {
-      // Implement bookmark logic here
-      setIsBookmarked(!isBookmarked);
-      toast.success(isBookmarked ? 'Removido dos favoritos' : 'Adicionado aos favoritos');
-    } catch (error) {
-      toast.error('Erro ao atualizar favoritos');
-    }
-  };
-
   const shareChapter = async () => {
     try {
       const shareUrl = `${window.location.origin}/novel/${novelId}/chapter/${chapterId}`;
       if (navigator.share) {
         await navigator.share({
-          title: `${novel?.title} - Capítulo ${chapter?.chapter_number}`,
+          title: `${novel?.title} - Capítulo ${parseFloat(chapter?.chapter_number) || '1' }`,
           text: chapter?.title || '',
           url: shareUrl,
         });
@@ -465,21 +467,13 @@ useEffect(() => {
                   {novel?.title}
                 </h2>
                 <p className="text-sm text-gray-500 truncate">
-                  Capítulo {chapter.chapter_number}
+                  Capítulo {parseFloat(chapter.chapter_number) || '1'}
                   {chapter.title && ` - ${chapter.title}`}
                 </p>
               </div>
             </div>
             
             <div className="flex items-center gap-2 shrink-0">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={toggleBookmark}
-                className={isBookmarked ? 'text-yellow-500' : ''}
-              >
-                <Bookmark className={`w-4 h-4 ${isBookmarked ? 'fill-current' : ''}`} />
-              </Button>
               
               <Button
                 variant="secondary"
@@ -556,7 +550,7 @@ useEffect(() => {
 
       {/* Settings Panel */}
       {showSettings && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center pt-20">
+        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 dark:bg-gray-900/50">
           <div className={`${themeClasses[theme]} rounded-lg shadow-xl p-6 w-full max-w-md mx-4 max-h-[80vh] overflow-y-auto`}>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-semibold">Configurações de Leitura</h3>
@@ -709,28 +703,29 @@ useEffect(() => {
                 </label>
               </div>
 
-              {/* Theme */}
+              {/* Background Color */}
               <div>
-                <label className="block text-sm font-medium mb-2">Tema</label>
-                <div className="grid grid-cols-3 gap-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                  Cor de Fundo
+                </label>
+                <div className="grid grid-cols-4 gap-2">
                   {[
-                    { value: 'light', label: 'Claro', icon: Sun },
-                    { value: 'dark', label: 'Escuro', icon: Moon },
-                    { value: 'sepia', label: 'Sépia', icon: Type },
-                    { value: 'night', label: 'Noturno', icon: Moon },
-                    { value: 'paper', label: 'Papel', icon: Type }
-                  ].map(({ value, label, icon: Icon }) => (
+                    { value: 'black', label: 'Preto', class: 'bg-black' },
+                    { value: 'dark', label: 'Escuro', class: 'bg-gray-900' },
+                    { value: 'gray', label: 'Cinza', class: 'bg-gray-800' },
+                    { value: 'white', label: 'Branco', class: 'bg-white' }
+                  ].map(color => (
                     <button
-                      key={value}
-                      onClick={() => setTheme(value)}
-                      className={`p-3 rounded-lg border-2 transition flex flex-col items-center ${
-                        theme === value 
-                          ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' 
-                          : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
+                      key={color.value}
+                      onClick={() => setBackgroundColor(color.value)}
+                      className={`p-3 border-2 rounded-lg text-xs font-medium transition hover:border-gray-300 dark:bg-transparent ${
+                        backgroundColor === color.value
+                          ? 'border-primary-500'
+                          : 'border-gray-200 hover:border-gray-300 dark:border-gray-600 dark:hover:border-gray-500 dark:bg-transparent'
                       }`}
                     >
-                      <Icon className="w-4 h-4 mb-1" />
-                      <span className="text-xs">{label}</span>
+                      <div className={`w-full h-8 rounded mb-1 ${color.class} ${color.value === 'white' ? 'border border-gray-300 dark:border-gray-600' : ''}`} />
+                      {color.label}
                     </button>
                   ))}
                 </div>
@@ -784,7 +779,7 @@ useEffect(() => {
         >
           <header className="mb-8 text-center">
             <h1 className="text-3xl font-bold mb-2">
-              Capítulo {chapter.chapter_number}
+              Capítulo {parseFloat(chapter.chapter_number) || '1'}
             </h1>
             {chapter.title && (
               <h2 className="text-xl opacity-75 mb-4">

@@ -1,23 +1,24 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { LogIn, Mail, Lock, Eye, EyeOff, BookOpen } from 'lucide-react';
+import { LogIn, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
-import Input from '../components/common/Input';
+import { authService } from '../services/authService';
+import AuthLayout from '../components/layout/AuthLayout';
 import Button from '../components/common/Button';
 
 const Login = () => {
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [loading,       setLoading]       = useState(false);
+  const [showPassword,  setShowPassword]  = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const { login, updateUser } = useAuthStore();
   const navigate = useNavigate();
   const { register, handleSubmit, formState: { errors } } = useForm();
 
   const onSubmit = async (data) => {
+    setLoading(true);
     try {
-      setLoading(true);
       await login(data);
       toast.success('Bem-vindo de volta!');
       navigate('/');
@@ -29,29 +30,28 @@ const Login = () => {
   };
 
   const handleGoogleLogin = async (credential) => {
+    setGoogleLoading(true);
     try {
-      setGoogleLoading(true);
-      // Enviar o token JWT do Google para o backend para autenticação
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${apiUrl}/auth/google`, {
+
+      const res = await fetch(`${apiUrl}/auth/google`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ googleToken: credential })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ googleToken: credential }),
       });
 
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao fazer login com Google');
-      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao fazer login com Google');
 
-      // Salvar token e fazer login
+      // 🔐 salva token
       localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      // Atualizar estado global de auth
-      updateUser(data.user);
+
+      // 🔥 busca user completo
+      const me = await authService.getMe();
+
+      // ✅ salva user correto
+      localStorage.setItem('user', JSON.stringify(me.user));
+      updateUser(me.user);
 
       toast.success('Login com Google realizado!');
       navigate('/');
@@ -62,214 +62,126 @@ const Login = () => {
     }
   };
 
-  // Inicializar Google Sign-In
   React.useEffect(() => {
     if (window.google && import.meta.env.VITE_GOOGLE_CLIENT_ID) {
+      window.google.accounts.id.cancel(); // 🔥 limpa instâncias antigas
+
       window.google.accounts.id.initialize({
         client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-        callback: (response) => handleGoogleLogin(response.credential)
+        callback: (response) => handleGoogleLogin(response.credential),
       });
 
-      // Renderizar o botão
       window.google.accounts.id.renderButton(
         document.getElementById('google-signin-button'),
-        {
-          type: 'standard',
-          theme: 'outline',
-          size: 'large',
-          locale: 'pt_BR'
-        }
+        { type: 'standard', theme: 'outline', size: 'large', locale: 'pt_BR' }
       );
     }
   }, []);
 
   return (
-    <div className="relative min-h-screen bg-gray-900 pb-20">
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: "url('/src/assets/login-bg.jpg')" }}
-      />
-      <div className="absolute inset-0 bg-black/60" />
+    <AuthLayout
+      title="Bem-vindo de volta"
+      subtitle="Entre para continuar sua jornada de leitura"
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 
-      <div className="relative z-10 flex min-h-screen flex-col items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md space-y-8 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-gray-200 dark:border-gray-700">
-          <div className="text-center">
-            <Link to="/" className="inline-flex items-center gap-2 mb-6">
-              <div className="p-3 bg-primary-600 rounded-2xl dark:bg-primary-500">
-                <BookOpen className="w-8 h-8 text-white dark:text-gray-900" />
-              </div>
-              <span className="text-2xl font-bold text-gray-900 dark:text-white">MN Studio</span>
-            </Link>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2 dark:text-white">Bem-vindo de volta</h2>
-            <p className="text-gray-600 dark:text-gray-400">Entre para continuar sua jornada de leitura</p>
-          </div>
+        {/* Email */}
+        <AuthField
+          label="Email"
+          icon={<Mail className="w-4 h-4" />}
+          error={errors.email?.message}
+        >
+          <input
+            type="email"
+            placeholder="seu@email.com"
+            className={authInputCls(!!errors.email)}
+            {...register('email', {
+              required: 'Email é obrigatório',
+              pattern: { value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i, message: 'Email inválido' },
+            })}
+          />
+        </AuthField>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-6">
-            <div className="space-y-4">
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
-                  Email
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-gray-400 dark:text-gray-300" />
-                  </div>
-                  <input
-                    type="email"
-                    placeholder="seu@email.com"
-                    className={`input pl-10 ${errors.email ? 'border-red-500' : ''}`}
-                    {...register('email', {
-                      required: 'Email é obrigatório',
-                      pattern: {
-                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                        message: 'Email inválido'
-                      }
-                    })}
-                  />
-                </div>
-                {errors.email && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.email.message}</p>
-                )}
-              </div>
+        {/* Senha */}
+        <AuthField
+          label="Senha"
+          icon={<Lock className="w-4 h-4" />}
+          error={errors.password?.message}
+          suffix={
+            <button type="button" onClick={() => setShowPassword((v) => !v)} className="text-white/30 hover:text-white/60 transition-colors pr-3">
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          }
+        >
+          <input
+            type={showPassword ? 'text' : 'password'}
+            placeholder="••••••••"
+            className={authInputCls(!!errors.password)}
+            {...register('password', {
+              required: 'Senha é obrigatória',
+              minLength: { value: 6, message: 'Mínimo 6 caracteres' },
+            })}
+          />
+        </AuthField>
 
-              {/* Password */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
-                  Senha
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-400 dark:text-gray-300" />
-                  </div>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
-                    className={`input pl-10 pr-10 ${errors.password ? 'border-red-500' : ''}`}
-                    {...register('password', {
-                      required: 'Senha é obrigatória',
-                      minLength: {
-                        value: 6,
-                        message: 'Senha deve ter no mínimo 6 caracteres'
-                      }
-                    })}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600 dark:text-gray-300" />
-                    ) : (
-                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600 dark:text-gray-300" />
-                    )}
-                  </button>
-                </div>
-                {errors.password && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.password.message}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Remember & Forgot */}
-            <div className="flex items-center justify-between">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-400 dark:ring-offset-gray-800"
-                />
-                <span className="ml-2 text-sm text-gray-600 dark:text-gray-300">Lembrar-me</span>
-              </label>
-              <Link
-                to="/forgot-password"
-                className="text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-500"
-              >
-                Esqueceu a senha?
-              </Link>
-            </div>
-
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              className="w-full"
-              size="lg"
-              loading={loading}
-            >
-              <LogIn className="w-5 h-5 mr-2" />
-              Entrar
-            </Button>
-
-            {/* Divider */}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300 dark:border-gray-700"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500 dark:bg-gray-900 dark:text-gray-400">ou</span>
-              </div>
-            </div>
-
-            {/* Google Login Button */}
-            <div id="google-signin-button"></div>
-
-            {/* Register Link */}
-            <div className="text-center">
-              <p className="text-sm text-gray-600">
-                Não tem uma conta?{' '}
-                <Link
-                  to="/register"
-                  className="font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-500"
-                >
-                  Cadastre-se gratuitamente
-                </Link>
-              </p>
-            </div>
-          </form>
+        {/* Lembrar + esqueceu */}
+        <div className="flex items-center justify-between pt-0.5">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" className="w-3.5 h-3.5 rounded accent-primary-500" />
+            <span className="text-xs text-white/50">Lembrar-me</span>
+          </label>
+          <Link to="/forgot-password" className="text-xs text-primary-400 hover:text-primary-300 transition-colors">
+            Esqueceu a senha?
+          </Link>
         </div>
-      </div>
 
-      <div className="relative z-10 mt-10 w-full max-w-4xl px-4 mx-auto">
-        <div className="rounded-3xl bg-white/90 dark:bg-gray-900/80 p-8 border border-gray-200 dark:border-gray-700 shadow-xl backdrop-blur-xl">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Sua biblioteca de mangás e novels</h2>
-          <p className="text-gray-700 dark:text-gray-300 mb-6">Acesse milhares de títulos, acompanhe seu progresso de leitura e descubra novas histórias incríveis.</p>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-lg bg-primary-600/20 text-primary-600 flex items-center justify-center">
-                <BookOpen className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white">Conteúdo atualizado</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300">Novos capítulos adicionados diariamente</p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-lg bg-primary-600/20 text-primary-600 flex items-center justify-center">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white">Totalmente gratuito</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300">Sem taxas ou assinaturas</p>
-              </div>
-            </div>
-            <div className="sm:col-span-2 flex gap-3">
-              <div className="w-8 h-8 rounded-lg bg-primary-600/20 text-primary-600 flex items-center justify-center">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white">Continue de onde parou</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300">Histórico de leitura sincronizado</p>
-              </div>
-            </div>
-          </div>
+        {/* Submit */}
+        <div className="pt-2">
+          <Button type="submit" className="w-full !py-2.5" loading={loading}>
+            <LogIn className="w-4 h-4 mr-2" />
+            Entrar
+          </Button>
         </div>
-      </div>
-    </div>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-white/10" />
+          <span className="text-xs text-white/30">ou</span>
+          <div className="flex-1 h-px bg-white/10" />
+        </div>
+
+        {/* Google */}
+        <div id="google-signin-button" className="flex justify-center " />
+
+        {/* Register */}
+        <p className="text-center text-xs text-white/40 pt-1">
+          Não tem conta?{' '}
+          <Link to="/register" className="text-primary-400 hover:text-primary-300 font-medium transition-colors">
+            Cadastre-se grátis
+          </Link>
+        </p>
+      </form>
+    </AuthLayout>
   );
 };
+
+/* ── Helpers de campo ─────────────────────────────────────────── */
+
+const authInputCls = (hasError) =>
+  `w-full pl-9 pr-3 py-2.5 text-sm bg-white/10 border rounded-xl text-white placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all ${
+    hasError ? 'border-red-500/60' : 'border-white/10 hover:border-white/20'
+  }`;
+
+const AuthField = ({ label, icon, error, suffix, children }) => (
+  <div>
+    <label className="block text-xs font-medium text-white/60 mb-1.5">{label}</label>
+    <div className="relative flex items-center">
+      <span className="absolute left-3 text-white/30">{icon}</span>
+      <div className="w-full">{children}</div>
+      {suffix && <div className="absolute right-0 flex items-center">{suffix}</div>}
+    </div>
+    {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+  </div>
+);
 
 export default Login;
