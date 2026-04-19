@@ -48,6 +48,12 @@ db.UserBadge = require('./UserBadge')(sequelize, Sequelize);
 db.HelpCenter = require('./HelpCenter')(sequelize, Sequelize);
 db.HelpRequest = require('./HelpRequest')(sequelize, Sequelize);
 
+// ✅ ADICIONAR MODELS DE SUBSCRIPTION
+db.SubscriptionPlan = require('./SubscriptionPlan')(sequelize, Sequelize);
+db.PlanFeature = require('./PlanFeature')(sequelize, Sequelize);
+db.UserSubscription = require('./UserSubscription')(sequelize, Sequelize);
+db.Payment = require('./Payment')(sequelize, Sequelize);
+
 // Definir associações
 Object.keys(db).forEach(modelName => {
   if (db[modelName].associate) {

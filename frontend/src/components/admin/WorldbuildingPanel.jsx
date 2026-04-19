@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Globe, Sparkles, TrendingUp, Plus, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
+import {
+  Users, Globe, Sparkles, TrendingUp, Plus, Edit, Trash2,
+  Eye, EyeOff, ChevronDown,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import { worldbuildingService } from '../../services/worldbuildingService';
 import { aiService } from '../../services/aiService';
@@ -11,733 +14,355 @@ import Select from '../common/Select';
 import { novelService } from '../../services/novelService';
 import ProviderSelector from './ProviderSelector';
 
-const WorldbuildingPanel = ({ novelId, onSelect, mode = 'manage' }) => {
-  const isManage = mode === 'manage';
-  const isSelect = mode === 'select';
-  const [activeTab, setActiveTab] = useState('characters');
-  const [characters, setCharacters] = useState([]);
-  const [worlds, setWorlds] = useState([]);
-  const [magicSystems, setMagicSystems] = useState([]);
-  const [cultivationSystems, setCultivationSystems] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState('');
-  const [editingItem, setEditingItem] = useState(null);
+/* ── Tabs ─────────────────────────────────────────────────────────── */
 
-  useEffect(() => {
-    loadData();
-  }, [novelId, activeTab]);
+const TABS = [
+  { id: 'characters',  icon: Users,      label: 'Personagens' },
+  { id: 'worlds',      icon: Globe,      label: 'Mundos'      },
+  { id: 'magic',       icon: Sparkles,   label: 'Magia'       },
+  { id: 'cultivation', icon: TrendingUp, label: 'Cultivo'     },
+];
+
+/* ── Estilos comuns ──────────────────────────────────────────────── */
+
+const inputCls = 'w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/40 resize-none';
+
+/* ── Componente principal ─────────────────────────────────────────── */
+
+const WorldbuildingPanel = ({ novelId, onSelect, mode = 'manage' }) => {
+  const [activeTab,          setActiveTab]          = useState('characters');
+  const [characters,         setCharacters]         = useState([]);
+  const [worlds,             setWorlds]             = useState([]);
+  const [magicSystems,       setMagicSystems]       = useState([]);
+  const [cultivationSystems, setCultivationSystems] = useState([]);
+  const [loading,            setLoading]            = useState(false);
+  const [showModal,          setShowModal]          = useState(false);
+  const [modalType,          setModalType]          = useState('');
+  const [editingItem,        setEditingItem]        = useState(null);
+
+  useEffect(() => { loadData(); }, [novelId, activeTab]);
 
   const loadData = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       switch (activeTab) {
-        case 'characters':
-          const charData = await worldbuildingService.getCharacters(novelId);
-          setCharacters(charData.characters || []);
-          break;
-        case 'worlds':
-          const worldData = await worldbuildingService.getWorlds(novelId);
-          setWorlds(worldData.worlds || []);
-          break;
-        case 'magic':
-          const magicData = await worldbuildingService.getMagicSystems(novelId);
-          setMagicSystems(magicData.systems || []);
-          break;
-        case 'cultivation':
-          const cultData = await worldbuildingService.getCultivationSystems(novelId);
-          setCultivationSystems(cultData.systems || []);
-          break;
+        case 'characters': { const d = await worldbuildingService.getCharacters(novelId);       setCharacters(d.characters || []);         break; }
+        case 'worlds':     { const d = await worldbuildingService.getWorlds(novelId);           setWorlds(d.worlds || []);                 break; }
+        case 'magic':      { const d = await worldbuildingService.getMagicSystems(novelId);     setMagicSystems(d.systems || []);          break; }
+        case 'cultivation':{ const d = await worldbuildingService.getCultivationSystems(novelId); setCultivationSystems(d.systems || []); break; }
       }
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-    } finally {
-      setLoading(false);
-    }
+    } catch { /* silencioso */ }
+    finally { setLoading(false); }
   };
 
-  const tabs = [
-    { id: 'characters', icon: Users, label: 'Personagens', count: characters.length },
-    { id: 'worlds', icon: Globe, label: 'Mundos', count: worlds.length },
-    { id: 'magic', icon: Sparkles, label: 'Magia', count: magicSystems.length },
-    { id: 'cultivation', icon: TrendingUp, label: 'Cultivo', count: cultivationSystems.length }
-  ];
-
-  const handleCreate = (type) => {
-    setModalType(type);
-    setEditingItem(null);
-    setShowModal(true);
-  };
-
-  const handleEdit = (item, type) => {
-    setModalType(type);
-    setEditingItem(item);
-    setShowModal(true);
-  };
+  const handleCreate = (type) => { setModalType(type); setEditingItem(null); setShowModal(true); };
+  const handleEdit   = (item, type) => { setModalType(type); setEditingItem(item); setShowModal(true); };
 
   const handleDelete = async (id, type) => {
-    if (!confirm('Tem certeza que deseja deletar?')) return;
-
+    if (!confirm('Deletar este item?')) return;
     try {
-      switch (type) {
-        case 'character':
-          await worldbuildingService.deleteCharacter(id);
-          break;
-        case 'world':
-          await worldbuildingService.deleteWorld(id);
-          break;
-      }
-      toast.success('Item deletado com sucesso!');
+      if (type === 'character') await worldbuildingService.deleteCharacter(id);
+      else if (type === 'world') await worldbuildingService.deleteWorld(id);
+      toast.success('Item deletado!');
       loadData();
-    } catch (error) {
-      toast.error('Erro ao deletar item');
-    }
+    } catch { toast.error('Erro ao deletar'); }
   };
 
+  const counts = {
+    characters: characters.length, worlds: worlds.length,
+    magic: magicSystems.length, cultivation: cultivationSystems.length,
+  };
+
+  const tabItems = { characters, worlds, magic: magicSystems, cultivation: cultivationSystems }[activeTab] || [];
+
   return (
-    <Card className="p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900 flex items-center gap-2 dark:text-white">
-          <Globe className="w-5 h-5 text-primary-600 dark:text-primary-500" />
-          Worldbuilding
-        </h3>
+    <Card className="p-5">
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-4">
+        <Globe className="w-4 h-4 text-primary-500" />
+        <h3 className="text-sm font-black text-gray-900 dark:text-white">Worldbuilding</h3>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <button
-              type="button"
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 mt-2 ml-1 rounded-lg whitespace-nowrap transition ${
-                activeTab === tab.id
-                  ? 'bg-primary-100 text-primary-700 font-medium dark:bg-primary-700/20 dark:text-white dark:font-medium dark:outline dark:outline-1 dark:outline-primary-500'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white dark:outline dark:outline-1 dark:outline-gray-600'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {tab.label}
-              <span className="text-xs bg-white px-1.5 py-0.5 rounded-full dark:bg-gray-800 dark:text-gray-300 dark:outline dark:outline-1 dark:outline-gray-600">
-                {tab.count}
-              </span>
-            </button>
-          );
-        })}
+      <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl mb-4 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+        {TABS.map(({ id, icon: Icon, label }) => (
+          <button key={id} type="button" onClick={() => setActiveTab(id)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex-1 justify-center ${
+              activeTab === id
+                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            }`}>
+            <Icon className="w-3.5 h-3.5" />
+            {label}
+            <span className={`text-[10px] px-1 rounded font-bold ${activeTab === id ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400' : 'bg-gray-200 dark:bg-gray-700 text-gray-500'}`}>
+              {counts[id] ?? 0}
+            </span>
+          </button>
+        ))}
       </div>
 
-      {/* Content */}
-      <div className="space-y-3">
-        {/* Characters */}
-        {activeTab === 'characters' && (
-          <>
-            <Button
-              size="sm"
-              onClick={() => handleCreate('character')}
-              className="w-full">
-              <span className="w-full">
-              <Plus className="w-4 h-4 mr-2" />
-              Adicionar Personagem
-              </span>
-            </Button>
+      {/* Conteúdo */}
+      <div className="space-y-2">
+        {/* Botão de adicionar */}
+        <button type="button"
+          onClick={() => handleCreate(activeTab === 'characters' ? 'character' : activeTab === 'worlds' ? 'world' : activeTab === 'magic' ? 'magic' : 'cultivation')}
+          className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-primary-600 dark:text-primary-400 border border-dashed border-primary-200 dark:border-primary-800 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors">
+          <Plus className="w-3.5 h-3.5" />
+          Adicionar {TABS.find((t) => t.id === activeTab)?.label.slice(0, -1)}
+        </button>
 
-            {characters.map((char) => (
-              <CharacterCard
-                key={char.id}
-                character={char}
-                onEdit={() => handleEdit(char, 'character')}
-                onDelete={() => handleDelete(char.id, 'character')}
-                onSelect={() => onSelect?.(char, 'character')}
+        {/* Items */}
+        {loading ? (
+          <div className="h-12 flex items-center justify-center">
+            <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : tabItems.length === 0 ? (
+          <p className="text-xs text-center text-gray-400 dark:text-gray-600 py-6">Nenhum item cadastrado</p>
+        ) : (
+          tabItems.map((item) => {
+            const itemType = activeTab === 'characters' ? 'character' : activeTab === 'worlds' ? 'world' : activeTab === 'magic' ? 'magic' : 'cultivation';
+            return (
+              <WorldbuildingItem
+                key={item.id}
+                item={item}
+                type={itemType}
+                onEdit={() => handleEdit(item, itemType)}
+                onDelete={() => handleDelete(item.id, itemType)}
+                onSelect={() => onSelect?.(item, itemType)}
               />
-            ))}
-          </>
-        )}
-
-        {/* Worlds */}
-        {activeTab === 'worlds' && (
-          <>
-            <Button
-              size="sm"
-              onClick={() => handleCreate('world')}
-              className="w-full"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Adicionar Mundo
-            </Button>
-
-            {worlds.map((world) => (
-              <WorldCard
-                key={world.id}
-                world={world}
-                onEdit={() => handleEdit(world, 'world')}
-                onDelete={() => handleDelete(world.id, 'world')}
-                onSelect={() => onSelect?.(world, 'world')}
-              />
-            ))}
-          </>
-        )}
-
-        {/* Magic Systems */}
-        {activeTab === 'magic' && (
-          <>
-            <Button
-              size="sm"
-              onClick={() => handleCreate('magic')}
-              className="w-full"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Adicionar Sistema de Magia
-            </Button>
-
-            {magicSystems.map((system) => (
-              <MagicSystemCard
-                key={system.id}
-                system={system}
-                onSelect={() => onSelect?.(system, 'magic')}
-              />
-            ))}
-          </>
-        )}
-
-        {/* Cultivation Systems */}
-        {activeTab === 'cultivation' && (
-          <>
-            <Button
-              size="sm"
-              onClick={() => handleCreate('cultivation')}
-              className="w-full"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Adicionar Sistema de Cultivo
-            </Button>
-
-            {cultivationSystems.map((system) => (
-              <CultivationSystemCard
-                key={system.id}
-                system={system}
-                onSelect={() => onSelect?.(system, 'cultivation')}
-              />
-            ))}
-          </>
+            );
+          })
         )}
       </div>
 
       {/* Modal */}
       {showModal && (
-        <WorldbuildingModal
-          type={modalType}
-          novelId={novelId}
-          item={editingItem}
-          onClose={() => {
-            setShowModal(false);
-            setEditingItem(null);
-          }}
-          onSuccess={() => {
-            setShowModal(false);
-            setEditingItem(null);
-            loadData();
-          }}
-        />
+        <WorldbuildingModal type={modalType} novelId={novelId} item={editingItem}
+          onClose={() => { setShowModal(false); setEditingItem(null); }}
+          onSuccess={() => { setShowModal(false); setEditingItem(null); loadData(); }} />
       )}
     </Card>
   );
 };
 
-// Character Card Component
-const CharacterCard = ({ character, onEdit, onDelete, onSelect }) => {
+/* ── WorldbuildingItem ────────────────────────────────────────────── */
+
+const WorldbuildingItem = ({ item, type, onEdit, onDelete, onSelect }) => {
   const [showDetails, setShowDetails] = useState(false);
 
+  const colorMap = {
+    character: 'border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/10',
+    world:     'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10',
+    magic:     'border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/10',
+    cultivation: 'border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-900/10',
+  };
+
   return (
-    <div className="p-3 border-2 border-gray-200 rounded-lg hover:border-primary-300 transition">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <h4 className="font-semibold text-gray-900 dark:text-white">{character.name}</h4>
-            {character.role && (
-              <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full dark:bg-blue-900 dark:text-blue-400">
-                {character.role}
+    <div className={`rounded-xl border p-3 transition-all ${colorMap[type]}`}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+            <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{item.name}</p>
+            {item.role && (
+              <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md font-semibold flex-shrink-0">
+                {item.role}
               </span>
             )}
           </div>
-          <p className="text-sm text-gray-600 line-clamp-2 dark:text-gray-400">{character.description}</p>
-          
-          {showDetails && character.traits && (
-            <div className="mt-2 text-xs text-gray-500 space-y-1 dark:text-gray-400">
-              {character.traits.split('\n').map((trait, i) => (
-                <p key={i}>• {trait}</p>
+          <p className="text-[10px] text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">
+            {item.description}
+          </p>
+          {showDetails && item.traits && (
+            <div className="mt-1.5 space-y-0.5">
+              {String(item.traits).split('\n').map((t, i) => (
+                <p key={i} className="text-[10px] text-gray-500 dark:text-gray-400">· {t}</p>
               ))}
+            </div>
+          )}
+          {type === 'cultivation' && item.levels?.length > 0 && showDetails && (
+            <div className="mt-1.5 space-y-0.5">
+              {item.levels.map((l, i) => <p key={i} className="text-[10px] text-orange-600 dark:text-orange-400">· {l}</p>)}
             </div>
           )}
         </div>
 
-        <div className="flex gap-1">
-          <button
-            type="button"
-            onClick={() => setShowDetails(!showDetails)}
-            className="p-1 text-gray-600 hover:text-primary-600 transition dark:text-white dark:hover:text-primary-500"
-            title={showDetails ? 'Ocultar' : 'Ver detalhes'}
-          >
-            {showDetails ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </button>
-          <button
-            type="button"
-            onClick={onEdit}
-            className="p-1 text-gray-600 hover:text-primary-600 transition dark:text-white dark:hover:text-primary-500"
-          >
-            <Edit className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            className="p-1 text-gray-600 hover:text-red-600 transition dark:text-red-400 dark:hover:text-red-500"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+        {/* Ações */}
+        <div className="flex gap-0.5 flex-shrink-0">
+          {(item.traits || item.description) && (
+            <button type="button" onClick={() => setShowDetails((v) => !v)}
+              className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+              {showDetails ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            </button>
+          )}
+          {(type === 'character' || type === 'world') && (
+            <button type="button" onClick={onEdit}
+              className="p-1 rounded-lg text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
+              <Edit className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {(type === 'character' || type === 'world') && (
+            <button type="button" onClick={onDelete}
+              className="p-1 rounded-lg text-gray-400 hover:text-red-500 transition-colors">
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={() => onSelect(character)}
-        className="mt-2 w-full text-xs text-primary-600 hover:text-primary-700 font-medium dark:text-primary-500 dark:hover:text-primary-400"
-      >
-        Inserir no capítulo
-      </button>
+      {/* Inserir no capítulo */}
+      {onSelect && (
+        <button type="button" onClick={() => onSelect(item)}
+          className="mt-2 w-full text-[10px] font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors">
+          + Inserir no capítulo
+        </button>
+      )}
     </div>
   );
 };
 
-// World Card Component
-const WorldCard = ({ world, onEdit, onDelete, onSelect }) => {
-  return (
-    <div className="p-3 border-2 border-gray-200 rounded-lg hover:border-primary-300 transition">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <h4 className="font-semibold text-gray-900">{world.name}</h4>
-          <p className="text-sm text-gray-600 line-clamp-2">{world.description}</p>
-        </div>
+/* ── WorldbuildingModal ───────────────────────────────────────────── */
 
-        <div className="flex gap-1">
-          <button type="button" onClick={onEdit} className="p-1 text-gray-600 hover:text-primary-600 transition">
-            <Edit className="w-4 h-4" />
-          </button>
-          <button type="button" onClick={onDelete} className="p-1 text-gray-600 hover:text-red-600 transition">
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      <button
-        type="button"
-        onClick={() => onSelect(world)}
-        className="mt-2 w-full text-xs text-primary-600 hover:text-primary-700 font-medium"
-      >
-        Inserir no capítulo
-      </button>
-    </div>
-  );
-};
-
-// Magic System Card
-const MagicSystemCard = ({ system, onSelect }) => (
-  <div className="p-3 border-2 border-purple-200 rounded-lg bg-purple-50">
-    <h4 className="font-semibold text-purple-900">{system.name}</h4>
-    <p className="text-sm text-purple-700 line-clamp-2">{system.description}</p>
-    <button
-      type="button"
-      onClick={() => onSelect(system)}
-      className="mt-2 w-full text-xs text-purple-600 hover:text-purple-700 font-medium"
-    >
-      Inserir no capítulo
-    </button>
-  </div>
-);
-
-// Cultivation System Card
-const CultivationSystemCard = ({ system, onSelect }) => (
-  <div className="p-3 border-2 border-orange-200 rounded-lg bg-orange-50">
-    <h4 className="font-semibold text-orange-900">{system.name}</h4>
-    <div className="text-xs text-orange-700 mt-1 space-y-0.5">
-      {system.levels?.map((level, i) => (
-        <p key={i}>• {level}</p>
-      ))}
-    </div>
-    <button
-      type="button"
-      onClick={() => onSelect(system)}
-      className="mt-2 w-full text-xs text-orange-600 hover:text-orange-700 font-medium"
-    >
-      Inserir no capítulo
-    </button>
-  </div>
-);
-
-// Modal Component
 const WorldbuildingModal = ({ type, novelId, item, onClose, onSuccess }) => {
-  const [loading, setLoading] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [providerConfig, setProviderConfig] = useState(null);
-  const [formData, setFormData] = useState({
-    name: item?.name || '',
-    description: item?.description || '',
-    role: item?.role || '',
-    traits: item?.traits || '',
-    type: item?.type || '',
-    elements: item?.elements || '',
-    rules: item?.rules || '',
-    levels: item?.levels || [],
-    novel_id: item?.novel_id || novelId || ''
+  const [loading,        setLoading]       = useState(false);
+  const [aiLoading,      setAiLoading]     = useState(false);
+  const [providerConfig, setProviderConfig]= useState(null);
+  const [novelOptions,   setNovelOptions]  = useState([]);
+  const [formData,       setFormData]      = useState({
+    name: item?.name || '', description: item?.description || '', role: item?.role || '',
+    traits: item?.traits || '', type: item?.type || '', elements: item?.elements || '',
+    rules: item?.rules || '', levels: item?.levels || [], novel_id: item?.novel_id || novelId || '',
   });
 
-  const [novelOptions, setNovelOptions] = useState([]);
-
   useEffect(() => {
-    const loadNovels = async () => {
-      try {
-        const data = await novelService.getAll({ limit: 200 });
-        const opts = (data.novels || []).map(n => ({ value: n.id, label: n.title }));
-        setNovelOptions(opts);
-      } catch (err) {
-        console.warn('Não foi possível carregar novels para associação', err);
-      }
-    };
-
-    loadNovels();
+    novelService.getAll({ limit: 200 }).then((d) => setNovelOptions((d.novels || []).map((n) => ({ value: n.id, label: n.title })))).catch(() => {});
   }, []);
 
+  const set = (k, v) => setFormData((p) => ({ ...p, [k]: v }));
+
+  const TYPE_LABEL = { character: 'Personagem', world: 'Mundo', magic: 'Sistema de Magia', cultivation: 'Sistema de Cultivo' };
+
   const handleAIGenerate = async () => {
+    if (!providerConfig?.provider || !providerConfig?.model) { toast.error('Selecione um provedor de IA'); return; }
+    setAiLoading(true);
     try {
-      setAiLoading(true);
       let result;
-
-      switch (type) {
-        case 'character':
-          result = await aiService.generateCharacter(
-            novelId,
-            formData.role,
-            formData.traits,
-            providerConfig
-          );
-          setFormData({
-            ...formData,
-            name: result.character.name,
-            description: result.character.description,
-            traits: result.character.traits
-          });
-          break;
-
-        case 'world':
-          result = await aiService.generateWorld(
-            novelId,
-            formData.type,
-            formData.elements,
-            providerConfig
-          );
-          setFormData({
-            ...formData,
-            name: result.world.name,
-            description: result.world.description
-          });
-          break;
-
-        case 'magic':
-          result = await aiService.generateMagicSystem(
-            novelId,
-            formData.type,
-            formData.rules,
-            providerConfig
-          );
-          setFormData({
-            ...formData,
-            name: result.system.name,
-            description: result.system.description,
-            rules: result.system.rules
-          });
-          break;
-
-        case 'cultivation':
-          result = await aiService.generateCultivationSystem(
-            novelId,
-            formData.levels,
-            providerConfig
-          );
-          setFormData({
-            ...formData,
-            name: result.system.name,
-            description: result.system.description,
-            levels: result.system.levels
-          });
-          break;
-      }
-
-      toast.success(`${getTypeLabel(type)} gerado com IA!`);
-    } catch (error) {
-      toast.error('Erro ao gerar com IA');
-    } finally {
-      setAiLoading(false);
-    }
+      if (type === 'character') { result = await aiService.generateCharacter(novelId, formData.role, formData.traits, providerConfig); if (result.character) { set('name', result.character.name); set('description', result.character.description); set('traits', result.character.traits); } }
+      else if (type === 'world') { result = await aiService.generateWorld(novelId, formData.type, formData.elements, providerConfig); if (result.world) { set('name', result.world.name); set('description', result.world.description); } }
+      else if (type === 'magic') { result = await aiService.generateMagicSystem(novelId, formData.type, formData.rules, providerConfig); if (result.system) { set('name', result.system.name); set('description', result.system.description); set('rules', result.system.rules); } }
+      else if (type === 'cultivation') { result = await aiService.generateCultivationSystem(novelId, formData.levels, providerConfig); if (result.system) { set('name', result.system.name); set('description', result.system.description); set('levels', result.system.levels); } }
+      toast.success(`${TYPE_LABEL[type]} gerado com IA!`);
+    } catch { toast.error('Erro ao gerar com IA'); }
+    finally { setAiLoading(false); }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     try {
-      setLoading(true);
-      const targetNovelId = formData.novel_id || novelId || null;
-
-      switch (type) {
-        case 'character':
-          if (item) {
-            await worldbuildingService.updateCharacter(item.id, formData);
-          } else {
-            await worldbuildingService.createCharacter(targetNovelId, formData);
-          }
-          break;
-
-        case 'world':
-          if (item) {
-            await worldbuildingService.updateWorld(item.id, formData);
-          } else {
-            await worldbuildingService.createWorld(targetNovelId, formData);
-          }
-          break;
-
-        case 'magic':
-          await worldbuildingService.createMagicSystem(targetNovelId, formData);
-          break;
-
-        case 'cultivation':
-            if (!formData.name?.trim()) {
-              toast.error('O nome do sistema de cultivo é obrigatório');
-              return;
-            }
-          await worldbuildingService.createCultivationSystem(targetNovelId, formData);
-          break;
+      const target = formData.novel_id || novelId || null;
+      if (type === 'character') { item ? await worldbuildingService.updateCharacter(item.id, formData) : await worldbuildingService.createCharacter(target, formData); }
+      else if (type === 'world') { item ? await worldbuildingService.updateWorld(item.id, formData) : await worldbuildingService.createWorld(target, formData); }
+      else if (type === 'magic') { await worldbuildingService.createMagicSystem(target, formData); }
+      else if (type === 'cultivation') {
+        if (!formData.name?.trim()) { toast.error('Nome é obrigatório'); setLoading(false); return; }
+        await worldbuildingService.createCultivationSystem(target, formData);
       }
-
-      toast.success(`${getTypeLabel(type)} ${item ? 'atualizado' : 'criado'} com sucesso!`);
+      toast.success(`${TYPE_LABEL[type]} ${item ? 'atualizado' : 'criado'}!`);
       onSuccess();
-    } catch (error) {
-      toast.error(`Erro ao salvar ${getTypeLabel(type)}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getTypeLabel = (type) => {
-    const labels = {
-      character: 'Personagem',
-      world: 'Mundo',
-      magic: 'Sistema de Magia',
-      cultivation: 'Sistema de Cultivo'
-    };
-    return labels[type] || type;
+    } catch { toast.error(`Erro ao salvar ${TYPE_LABEL[type]}`); }
+    finally { setLoading(false); }
   };
 
   return (
-    <Modal
-      isOpen={true}
-      onClose={onClose}
-      title={`${item ? 'Editar' : 'Criar'} ${getTypeLabel(type)}`}
-      size="lg"
-    >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* AI Generator Section */}
-        <Card className="p-4 bg-purple-50 border-purple-200 dark:bg-purple-900/20 dark:border-purple-700">
-          <h4 className="font-semibold text-purple-900 mb-3 flex items-center dark:text-white">
-            <Sparkles className="w-5 h-5 mr-2" />
-            Gerar com IA
-          </h4>
+    <Modal isOpen onClose={onClose} title={`${item ? 'Editar' : 'Criar'} ${TYPE_LABEL[type]}`} size="lg">
+      <form onSubmit={handleSubmit} className="space-y-5">
 
-          <ProviderSelector
-            value={providerConfig}
-            onChange={setProviderConfig}
-            className="mb-3"
-          />
+        {/* IA */}
+        <Card className="p-4 bg-purple-50 dark:bg-purple-900/10 border-purple-200 dark:border-purple-800">
+          <div className="flex items-center gap-2 mb-3">
+            <Sparkles className="w-4 h-4 text-purple-600" />
+            <h4 className="text-sm font-bold text-gray-900 dark:text-white">Gerar com IA</h4>
+          </div>
+          <ProviderSelector value={providerConfig} onChange={setProviderConfig} />
 
-          {/* Character specific */}
           {type === 'character' && (
-            <>
-              <Input
-                label="Tipo de Personagem"
-                value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                placeholder="Ex: Protagonista, Antagonista, Mentor..."
-              />
-              <textarea
-                value={formData.traits}
-                onChange={(e) => setFormData({ ...formData, traits: e.target.value })}
-                placeholder="Características do personagem (opcional)... Ex: Corajoso, inteligente, reservado"
-                className="w-full px-3 py-2 mt-3 border rounded-lg text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-500"
-                rows={2}
-              />
-            </>
+            <div className="mt-3 space-y-2">
+              <Input label="Tipo de Personagem" value={formData.role} onChange={(e) => set('role', e.target.value)} placeholder="Ex: Protagonista, Antagonista…" />
+              <textarea value={formData.traits} onChange={(e) => set('traits', e.target.value)} rows={2} placeholder="Características (opcional)…" className={inputCls + ' mt-0'} />
+            </div>
           )}
-
-          {/* World specific */}
           {type === 'world' && (
-            <>
-              <Input
-                label="Tipo de Mundo"
-                value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                placeholder="Ex: Medieval, Futurista, Fantasia..."
-              />
-              <textarea
-                value={formData.elements}
-                onChange={(e) => setFormData({ ...formData, elements: e.target.value })}
-                placeholder="Elementos do mundo (opcional)... Ex: Magia, tecnologia avançada, dragões"
-                className="w-full px-3 py-2 mt-3 border rounded-lg text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-500"
-                rows={2}
-              />
-            </>
+            <div className="mt-3 space-y-2">
+              <Input label="Tipo de Mundo" value={formData.type} onChange={(e) => set('type', e.target.value)} placeholder="Ex: Medieval, Futurista…" />
+              <textarea value={formData.elements} onChange={(e) => set('elements', e.target.value)} rows={2} placeholder="Elementos (opcional)…" className={inputCls + ' mt-0'} />
+            </div>
           )}
-
-          {/* Magic System specific */}
           {type === 'magic' && (
-            <>
-              <Input
-                label="Tipo de Magia"
-                value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                placeholder="Ex: Elemental, Runas, Invocação..."
-              />
-              <textarea
-                value={formData.rules}
-                onChange={(e) => setFormData({ ...formData, rules: e.target.value })}
-                placeholder="Regras do sistema (opcional)..."
-                className="w-full px-3 py-2 mt-3 border rounded-lg text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-500"
-                rows={2}
-              />
-            </>
+            <div className="mt-3 space-y-2">
+              <Input label="Tipo de Magia" value={formData.type} onChange={(e) => set('type', e.target.value)} placeholder="Ex: Elemental, Runas…" />
+              <textarea value={formData.rules} onChange={(e) => set('rules', e.target.value)} rows={2} placeholder="Regras (opcional)…" className={inputCls + ' mt-0'} />
+            </div>
           )}
-
-          {/* Cultivation System specific */}
           {type === 'cultivation' && (
-            <Input
-              label="Número de Níveis"
-              type="number"
-              min="3"
-              max="20"
-              value={formData.levels?.length || 10}
-              onChange={(e) => {
-                const count = parseInt(e.target.value);
-                setFormData({ 
-                  ...formData, 
-                  levels: Array(count).fill('').map((_, i) => `Nível ${i + 1}`)
-                });
-              }}
-              placeholder="Ex: 10"
-            />
+            <div className="mt-3">
+              <Input label="Número de Níveis" type="number" min="3" max="20"
+                value={formData.levels?.length || 10}
+                onChange={(e) => { const n = parseInt(e.target.value); set('levels', Array.from({ length: n }, (_, i) => `Nível ${i + 1}`)); }}
+                placeholder="10" />
+            </div>
           )}
-
-          <Button
-            type="button"
-            onClick={handleAIGenerate}
-            loading={aiLoading}
-            className="w-full bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 text-white mt-3"
-          >
-            <Sparkles className="w-4 h-4 mr-2" />
-            Gerar com IA
-          </Button>
+          <button type="button" onClick={handleAIGenerate} disabled={aiLoading || !providerConfig}
+            className="mt-3 w-full flex items-center justify-center gap-2 py-2 text-sm font-semibold bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white rounded-xl transition-colors">
+            <Sparkles className="w-4 h-4" />
+            {aiLoading ? 'Gerando…' : 'Gerar com IA'}
+          </button>
         </Card>
 
-        {/* Manual Form Fields */}
-        <Input
-          label="Nome *"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder={`Nome do ${getTypeLabel(type).toLowerCase()}`}
-          required
-        />
+        {/* Campos manuais */}
+        <Input label="Nome *" value={formData.name} onChange={(e) => set('name', e.target.value)}
+          placeholder={`Nome do ${TYPE_LABEL[type]?.toLowerCase()}`} required />
 
-        {/* Associate to Novel */}
         {novelId ? (
-          <div className="text-sm text-gray-700 dark:text-white">
-            Associado a: <span className="font-medium text-gray-900 dark:text-white">{novelOptions.find(o => String(o.value) === String(novelId))?.label || `Novel ${novelId}`}</span>
-          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Associado à novel: <strong className="text-gray-900 dark:text-white">{novelOptions.find((o) => String(o.value) === String(novelId))?.label || `Novel ${novelId}`}</strong>
+          </p>
         ) : (
-          <div>
-            <Select
-              label="Associar à Novel (opcional)"
-              options={novelOptions}
-              value={formData.novel_id}
-              onChange={(e) => setFormData({ ...formData, novel_id: e.target.value })}
-              className="mb-2"
-            />
-          </div>
+          <Select label="Associar à Novel (opcional)" options={novelOptions} value={formData.novel_id}
+            onChange={(e) => set('novel_id', e.target.value)} />
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-white">
-            Descrição *
-          </label>
-          <textarea
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            rows={6}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-primary-500"
-            placeholder={`Descreva o ${getTypeLabel(type).toLowerCase()}...`}
-            required
-          />
+          <label className="block text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1.5">Descrição *</label>
+          <textarea value={formData.description} onChange={(e) => set('description', e.target.value)} rows={5} required
+            className={inputCls} placeholder={`Descreva o ${TYPE_LABEL[type]?.toLowerCase()}…`} />
         </div>
 
-        {/* Character specific fields */}
         {type === 'character' && (
           <>
-            <Input
-              label="Papel"
-              value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-              placeholder="Ex: Protagonista, Vilão, Mentor..."
-            />
-
+            <Input label="Papel" value={formData.role} onChange={(e) => set('role', e.target.value)} placeholder="Ex: Protagonista, Vilão…" />
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-white">
-                Características
-              </label>
-              <textarea
-                value={formData.traits}
-                onChange={(e) => setFormData({ ...formData, traits: e.target.value })}
-                rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-500"
-                placeholder="Uma característica por linha..."
-              />
+              <label className="block text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1.5">Características</label>
+              <textarea value={formData.traits} onChange={(e) => set('traits', e.target.value)} rows={3}
+                className={inputCls} placeholder="Uma característica por linha…" />
             </div>
           </>
         )}
 
-        {/* Cultivation levels */}
         {type === 'cultivation' && formData.levels?.length > 0 && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-white">
-              Níveis de Cultivo
-            </label>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {formData.levels.map((level, index) => (
-                <Input
-                  key={index}
-                  value={level}
-                  onChange={(e) => {
-                    const newLevels = [...formData.levels];
-                    newLevels[index] = e.target.value;
-                    setFormData({ ...formData, levels: newLevels });
-                  }}
-                  placeholder={`Nível ${index + 1}`}
-                />
+            <label className="block text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1.5">Níveis de Cultivo</label>
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-1" style={{ scrollbarWidth: 'thin' }}>
+              {formData.levels.map((level, i) => (
+                <Input key={i} value={level} placeholder={`Nível ${i + 1}`}
+                  onChange={(e) => { const l = [...formData.levels]; l[i] = e.target.value; set('levels', l); }} />
               ))}
             </div>
           </div>
         )}
 
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" loading={loading}>
-            {item ? 'Atualizar' : 'Criar'}
-          </Button>
+        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+          <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
+          <Button type="submit" loading={loading}>{item ? 'Atualizar' : 'Criar'}</Button>
         </div>
       </form>
     </Modal>

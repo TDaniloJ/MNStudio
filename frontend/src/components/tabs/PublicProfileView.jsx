@@ -95,7 +95,7 @@ const PublicProfileView = ({ user, stats, activity, achievements, favorites }) =
             </div>
 
             {/* Nome + info */}
-            <div className="flex-1 min-w-0 pb-1">
+            <div className="flex-1 min-w-0 pb-1 pt-16 ">
               <div className="flex flex-wrap items-center gap-2 mb-1">
                 <h2 className="text-2xl font-black text-gray-900 dark:text-white truncate">
                   {user?.username}

@@ -210,7 +210,7 @@ class AIService {
         { 
           model: NovelChapter, 
           as: 'chapters',
-          limit: 5,
+          limit: 2,
           order: [['chapter_number', 'DESC']],
           attributes: ['chapter_number', 'title', 'content', 'created_at']
         }
@@ -331,7 +331,7 @@ class AIService {
         contextText += `### Capítulo ${chapter.chapter_number}${chapter.title ? ` - ${chapter.title}` : ''}\n`;
         // Pega últimas 500 palavras do capítulo
         const contentPreview = chapter.content 
-          ? chapter.content.replace(/<[^>]*>/g, '').slice(-2500)
+          ? chapter.content.replace(/<[^>]*>/g, '').slice(-800)
           : 'Sem conteúdo';
         contextText += `${contentPreview}\n\n`;
       });

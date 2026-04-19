@@ -1,17 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  Settings as SettingsIcon, 
-  Globe, 
-  Palette, 
-  ToggleLeft,
-  Search as SearchIcon,
-  Mail,
-  Share2,
-  Code,
-  Save,
-  RotateCcw,
-  Upload,
-  X
+import {
+  Settings as SettingsIcon, Globe, Palette, ToggleLeft,
+  Search as SearchIcon, Mail, Share2, Code, Save, RotateCcw, Upload, X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSettingsStore } from '../../store/settingsStore';
@@ -23,231 +13,183 @@ import Input from '../../components/common/Input';
 import Loading from '../../components/common/Loading';
 
 const CATEGORIES = [
-  { id: 'general', label: 'Geral', icon: Globe },
-  { id: 'appearance', label: 'Aparência', icon: Palette },
-  { id: 'features', label: 'Funcionalidades', icon: ToggleLeft },
-  { id: 'seo', label: 'SEO', icon: SearchIcon },
-  { id: 'social', label: 'Redes Sociais', icon: Share2 },
-  { id: 'email', label: 'Email', icon: Mail },
-  { id: 'footer', label: 'Rodapé', icon: Code },
-  { id: 'advanced', label: 'Avançado', icon: SettingsIcon }
+  { id: 'general',    label: 'Geral',            icon: Globe        },
+  { id: 'appearance', label: 'Aparência',         icon: Palette      },
+  { id: 'features',   label: 'Funcionalidades',   icon: ToggleLeft   },
+  { id: 'seo',        label: 'SEO',               icon: SearchIcon   },
+  { id: 'social',     label: 'Redes Sociais',     icon: Share2       },
+  { id: 'email',      label: 'Email',             icon: Mail         },
+  { id: 'footer',     label: 'Rodapé',            icon: Code         },
+  { id: 'advanced',   label: 'Avançado',          icon: SettingsIcon },
 ];
 
 const Settings = () => {
   const { settings, loading, loadSettings, resetToDefaults } = useSettingsStore();
   const [activeCategory, setActiveCategory] = useState('general');
-  const [localSettings, setLocalSettings] = useState({});
-  const [saving, setSaving] = useState(false);
-  const [imageFiles, setImageFiles] = useState({});
-  const [imagePreviews, setImagePreviews] = useState({});
-  const [hasChanges, setHasChanges] = useState(false);
+  const [localSettings,  setLocalSettings]  = useState({});
+  const [saving,         setSaving]         = useState(false);
+  const [imageFiles,     setImageFiles]     = useState({});
+  const [imagePreviews,  setImagePreviews]  = useState({});
+  const [hasChanges,     setHasChanges]     = useState(false);
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
+  useEffect(() => { loadSettings(); }, []);
 
   useEffect(() => {
     if (settings[activeCategory]) {
-      setLocalSettings(prev => ({
-        ...prev,
-        [activeCategory]: { ...settings[activeCategory] }
-      }));
+      setLocalSettings((p) => ({ ...p, [activeCategory]: { ...settings[activeCategory] } }));
     }
   }, [settings, activeCategory]);
 
   const handleInputChange = (key, value) => {
-    setLocalSettings(prev => ({
-      ...prev,
-      [activeCategory]: {
-        ...prev[activeCategory],
-        [key]: { ...prev[activeCategory][key], value }
-      }
-    }));
+    setLocalSettings((p) => ({ ...p, [activeCategory]: { ...p[activeCategory], [key]: { ...p[activeCategory][key], value } } }));
     setHasChanges(true);
   };
 
   const handleImageChange = (key, file) => {
-    if (file) {
-      setImageFiles(prev => ({ ...prev, [key]: file }));
-      
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreviews(prev => ({ ...prev, [key]: reader.result }));
-      };
-      reader.readAsDataURL(file);
-      setHasChanges(true);
-    }
+    if (!file) return;
+    setImageFiles((p) => ({ ...p, [key]: file }));
+    const reader = new FileReader();
+    reader.onloadend = () => setImagePreviews((p) => ({ ...p, [key]: reader.result }));
+    reader.readAsDataURL(file);
+    setHasChanges(true);
   };
 
   const clearImage = (key) => {
-    setImageFiles(prev => {
-      const newFiles = { ...prev };
-      delete newFiles[key];
-      return newFiles;
-    });
-    setImagePreviews(prev => {
-      const newPreviews = { ...prev };
-      delete newPreviews[key];
-      return newPreviews;
-    });
+    setImageFiles((p) => { const n = { ...p }; delete n[key]; return n; });
+    setImagePreviews((p) => { const n = { ...p }; delete n[key]; return n; });
     handleInputChange(key, '');
   };
 
   const handleSave = async () => {
+    setSaving(true);
     try {
-      setSaving(true);
-
-      // Salvar imagens primeiro
-      for (const [key, file] of Object.entries(imageFiles)) {
-        await settingsService.updateSetting(key, file, true);
+      for (const [key, file] of Object.entries(imageFiles)) await settingsService.updateSetting(key, file, true);
+      const toUpdate = {};
+      for (const [key, setting] of Object.entries(localSettings[activeCategory] || {})) {
+        if (setting.type !== 'image') toUpdate[key] = setting.value;
       }
-
-      // Salvar outras configurações
-      const settingsToUpdate = {};
-      const categorySettings = localSettings[activeCategory] || {};
-      
-      for (const [key, setting] of Object.entries(categorySettings)) {
-        if (setting.type !== 'image') {
-          settingsToUpdate[key] = setting.value;
-        }
-      }
-
-      if (Object.keys(settingsToUpdate).length > 0) {
-        await settingsService.updateMultiple(settingsToUpdate);
-      }
-
+      if (Object.keys(toUpdate).length > 0) await settingsService.updateMultiple(toUpdate);
       await loadSettings();
       setImageFiles({});
       setImagePreviews({});
       setHasChanges(false);
-      toast.success('Configurações salvas com sucesso!');
-    } catch (error) {
-      toast.error('Erro ao salvar configurações');
-    } finally {
-      setSaving(false);
-    }
+      toast.success('Configurações salvas!');
+    } catch { toast.error('Erro ao salvar configurações'); }
+    finally { setSaving(false); }
   };
 
   const handleReset = async () => {
-    if (!confirm('Tem certeza que deseja resetar todas as configurações para o padrão? Esta ação não pode ser desfeita.')) {
-      return;
-    }
-
+    if (!confirm('Resetar todas as configurações para o padrão?')) return;
     try {
       await resetToDefaults();
-      setImageFiles({});
-      setImagePreviews({});
-      setHasChanges(false);
-      toast.success('Configurações resetadas para padrão!');
-    } catch (error) {
-      toast.error('Erro ao resetar configurações');
-    }
+      setImageFiles({}); setImagePreviews({}); setHasChanges(false);
+      toast.success('Configurações resetadas!');
+    } catch { toast.error('Erro ao resetar'); }
   };
 
-  if (loading && Object.keys(settings).length === 0) {
-    return <Loading fullScreen />;
-  }
+  if (loading && Object.keys(settings).length === 0) return <Loading fullScreen />;
 
   const categorySettings = localSettings[activeCategory] || settings[activeCategory] || {};
+  const activeCat        = CATEGORIES.find((c) => c.id === activeCategory);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Configurações do Site</h1>
-          <p className="text-gray-600 dark:text-gray-300 mt-1">
-            Personalize a aparência e funcionalidades do seu site
+          <div className="flex items-center gap-3 mb-1">
+            <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-xl">
+              <SettingsIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+            </div>
+            <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Configurações</h1>
+          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400 ml-12">
+            Personalize aparência e funcionalidades do site
           </p>
         </div>
-        
-        <div className="flex gap-3">
-          <Button
-            variant="secondary"
-            onClick={handleReset}
-          >
-            <RotateCcw className="w-4 h-4 mr-2" />
-            Resetar Padrões
-          </Button>
-          <Button
-            onClick={handleSave}
-            loading={saving}
-            disabled={!hasChanges}
-          >
-            <Save className="w-4 h-4 mr-2" />
-            Salvar Alterações
+        <div className="flex gap-2">
+          <button onClick={handleReset}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold border border-gray-200 dark:border-gray-700 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+            <RotateCcw className="w-4 h-4" />
+            Resetar
+          </button>
+          <Button size="sm" onClick={handleSave} loading={saving} disabled={!hasChanges}>
+            <Save className="w-3.5 h-3.5 mr-1.5" />
+            Salvar
           </Button>
         </div>
       </div>
 
-      {/* Unsaved Changes Warning */}
+      {/* Aviso de alterações */}
       {hasChanges && (
-        <Card className="p-4 bg-yellow-50 border-yellow-200">
-          <p className="text-sm text-yellow-800">
-            ⚠️ Você tem alterações não salvas. Clique em "Salvar Alterações" para aplicá-las.
+        <div className="p-3.5 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl flex items-center gap-3">
+          <span className="text-lg">⚠️</span>
+          <p className="text-sm text-yellow-800 dark:text-yellow-200">
+            Você tem alterações não salvas. Clique em <strong>Salvar</strong> para aplicá-las.
           </p>
-        </Card>
+        </div>
       )}
 
-      {/* Content */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Sidebar */}
-        <Card className="p-4 h-fit">
-          <h3 className="font-semibold text-gray-900 mb-3 dark:text-white">Categorias</h3>
-          <nav className="space-y-1">
-            {CATEGORIES.map((category) => {
-              const Icon = category.icon;
-              const isActive = activeCategory === category.id;
-              const categoryData = settings[category.id] || {};
-              const itemCount = Object.keys(categoryData).length;
 
+        {/* Sidebar */}
+        <Card className="p-3 h-fit">
+          <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 px-3 mb-2">Categorias</p>
+          <nav className="space-y-0.5">
+            {CATEGORIES.map(({ id, label, icon: Icon }) => {
+              const isActive   = activeCategory === id;
+              const itemCount  = Object.keys(settings[id] || {}).length;
               return (
-                <button
-                  key={category.id}
-                  onClick={() => setActiveCategory(category.id)}
-                  className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition ${
+                <button key={id} onClick={() => setActiveCategory(id)}
+                  className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                     isActive
-                      ? 'bg-primary-50 text-primary-700 font-medium dark:bg-primary-900 dark:text-primary-300'
-                      : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-900'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon className="w-5 h-5" />
-                    <span>{category.label}</span>
+                      ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800'
+                  }`}>
+                  <div className="flex items-center gap-2.5">
+                    <Icon className="w-4 h-4 flex-shrink-0" />
+                    <span>{label}</span>
                   </div>
-                  <span className="text-xs bg-gray-100 px-2 py-1 rounded-full dark:bg-gray-800">
-                    {itemCount}
-                  </span>
+                  {itemCount > 0 && (
+                    <span className="text-[10px] font-bold bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-500 px-1.5 py-0.5 rounded-md">
+                      {itemCount}
+                    </span>
+                  )}
                 </button>
               );
             })}
           </nav>
         </Card>
 
-        {/* Settings Panel */}
+        {/* Painel de configurações */}
         <div className="lg:col-span-3">
           <Card className="p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 dark:text-white">
-              {CATEGORIES.find(c => c.id === activeCategory)?.label}
-            </h2>
+            <div className="flex items-center gap-3 mb-6 pb-5 border-b border-gray-100 dark:border-gray-800">
+              {activeCat && <activeCat.icon className="w-5 h-5 text-primary-500" />}
+              <h2 className="text-lg font-black text-gray-900 dark:text-white">{activeCat?.label}</h2>
+            </div>
 
             {Object.keys(categorySettings).length === 0 ? (
-              <p className="text-gray-500 text-center py-8">
-                Nenhuma configuração disponível nesta categoria
-              </p>
+              <div className="text-center py-12 text-gray-300 dark:text-gray-700">
+                <SettingsIcon className="w-10 h-10 mx-auto mb-2" />
+                <p className="text-sm text-gray-400 dark:text-gray-500">Nenhuma configuração nesta categoria</p>
+              </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-7 divide-y divide-gray-50 dark:divide-gray-800">
                 {Object.entries(categorySettings).map(([key, setting]) => (
-                  <SettingField
-                    key={key}
-                    settingKey={key}
-                    setting={setting}
-                    value={setting.value}
-                    onChange={(value) => handleInputChange(key, value)}
-                    onImageChange={(file) => handleImageChange(key, file)}
-                    imagePreview={imagePreviews[key]}
-                    onClearImage={() => clearImage(key)}
-                  />
+                  <div key={key} className="pt-5 first:pt-0">
+                    <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1.5">
+                      {setting.description || key}
+                    </label>
+                    <SettingField
+                      settingKey={key} setting={setting} value={setting.value}
+                      onChange={(v) => handleInputChange(key, v)}
+                      onImageChange={(f) => handleImageChange(key, f)}
+                      imagePreview={imagePreviews[key]}
+                      onClearImage={() => clearImage(key)}
+                    />
+                  </div>
                 ))}
               </div>
             )}
@@ -258,159 +200,78 @@ const Settings = () => {
   );
 };
 
-// Componente de Campo de Configuração
-const SettingField = ({ 
-  settingKey, 
-  setting, 
-  value, 
-  onChange, 
-  onImageChange, 
-  imagePreview,
-  onClearImage 
-}) => {
-  const renderField = () => {
-    switch (setting.type) {
-      case 'text':
-        return (
-          <Input
-            value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={setting.description}
-          />
-        );
+/* ── SettingField ────────────────────────────────────────────────── */
 
-      case 'textarea':
-        return (
-          <textarea
-            value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={setting.description}
-            rows={4}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:ring-primary-500 dark:focus:border-transparent"
-          />
-        );
+const inputCls = 'w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/40 transition-all';
 
-      case 'number':
-        return (
-          <Input
-            type="number"
-            value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={setting.description}
-          />
-        );
+const SettingField = ({ settingKey, setting, value, onChange, onImageChange, imagePreview, onClearImage }) => {
+  switch (setting.type) {
 
-      case 'boolean':
-        return (
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => onChange(value === 'true' ? 'false' : 'true')}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                value === 'true' ? 'bg-primary-600 dark:bg-primary-500' : 'bg-gray-200 dark:bg-gray-700'
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform dark:bg-gray-300 ${
-                  value === 'true' ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
-            <span className="text-sm text-gray-600 dark:text-gray-300">
-              {value === 'true' ? 'Ativado' : 'Desativado'}
-            </span>
+    case 'text':
+      return <Input value={value || ''} onChange={(e) => onChange(e.target.value)} placeholder={setting.description} />;
+
+    case 'textarea':
+      return <textarea value={value || ''} onChange={(e) => onChange(e.target.value)}
+        placeholder={setting.description} rows={4} className={inputCls + ' resize-none'} />;
+
+    case 'number':
+      return <Input type="number" value={value || ''} onChange={(e) => onChange(e.target.value)} placeholder={setting.description} />;
+
+    case 'boolean':
+      return (
+        <div className="flex items-center gap-3">
+          <div onClick={() => onChange(value === 'true' ? 'false' : 'true')}
+            className={`relative w-10 h-5.5 rounded-full cursor-pointer transition-colors ${value === 'true' ? 'bg-primary-500' : 'bg-gray-300 dark:bg-gray-700'}`}
+            style={{ height: '22px' }}>
+            <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${value === 'true' ? 'left-5' : 'left-0.5'}`} />
           </div>
-        );
+          <span className="text-sm text-gray-600 dark:text-gray-400">
+            {value === 'true' ? 'Ativado' : 'Desativado'}
+          </span>
+        </div>
+      );
 
-      case 'color':
-        return (
-          <div className="flex items-center gap-3">
-            <input
-              type="color"
-              value={value || '#000000'}
-              onChange={(e) => onChange(e.target.value)}
-              className="h-10 w-20 rounded border border-gray-300 cursor-pointer dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:ring-primary-500 dark:focus:border-transparent"
-            />
-            <Input
-              value={value || ''}
-              onChange={(e) => onChange(e.target.value)}
-              placeholder="#000000"
-              className="flex-1"
-            />
-          </div>
-        );
+    case 'color':
+      return (
+        <div className="flex items-center gap-3">
+          <input type="color" value={value || '#000000'} onChange={(e) => onChange(e.target.value)}
+            className="h-10 w-14 rounded-xl border border-gray-200 dark:border-gray-700 cursor-pointer bg-transparent" />
+          <input type="text" value={value || ''} onChange={(e) => onChange(e.target.value)} placeholder="#000000"
+            className={inputCls + ' max-w-[140px] font-mono'} />
+        </div>
+      );
 
-      case 'image':
-        return (
-          <div className="space-y-3">
-            {(imagePreview || value) && (
-              <div className="relative inline-block">
-                <img
-                  src={imagePreview || getImageUrl(value)}
-                  alt={setting.description}
-                  className="w-32 h-32 object-cover rounded-lg border-2 border-gray-200 dark:border-gray-700"
-                  onError={(e) => {
-                    e.target.src = 'https://via.placeholder.com/200?text=No+Image';
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={onClearImage}
-                  className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-            
-            <label className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer transition dark:bg-gray-800 dark:hover:bg-gray-700">
-              <Upload className="w-4 h-4" />
-              <span className="text-sm font-medium">
-                {value || imagePreview ? 'Alterar Imagem' : 'Fazer Upload'}
-              </span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => onImageChange(e.target.files[0])}
-                className="hidden"
-              />
-            </label>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              PNG, JPG, WEBP até 10MB
-            </p>
-          </div>
-        );
+    case 'image':
+      return (
+        <div className="space-y-3">
+          {(imagePreview || value) && (
+            <div className="relative inline-block">
+              <img src={imagePreview || getImageUrl(value)} alt={setting.description}
+                className="w-32 h-32 object-cover rounded-xl border border-gray-200 dark:border-gray-700"
+                onError={(e) => { e.target.src = 'https://via.placeholder.com/128?text=N/A'; }} />
+              <button type="button" onClick={onClearImage}
+                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors shadow">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+          <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl cursor-pointer transition-colors">
+            <Upload className="w-4 h-4" />
+            {value || imagePreview ? 'Alterar imagem' : 'Fazer upload'}
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => onImageChange(e.target.files[0])} />
+          </label>
+          <p className="text-xs text-gray-400 dark:text-gray-500">PNG, JPG, WEBP até 10MB</p>
+        </div>
+      );
 
-      case 'json':
-        return (
-          <textarea
-            value={value || '{}'}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={setting.description}
-            rows={6}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:ring-primary-500 dark:focus:border-transparent"
-          />
-        );
+    case 'json':
+      return <textarea value={value || '{}'} onChange={(e) => onChange(e.target.value)}
+        placeholder={setting.description} rows={6}
+        className={inputCls + ' resize-none font-mono text-xs'} />;
 
-      default:
-        return (
-          <Input
-            value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={setting.description}
-          />
-        );
-    }
-  };
-
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
-        {setting.description || settingKey}
-      </label>
-      {renderField()}
-    </div>
-  );
+    default:
+      return <Input value={value || ''} onChange={(e) => onChange(e.target.value)} placeholder={setting.description} />;
+  }
 };
 
 export default Settings;

@@ -1,17 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Trophy, 
-  TrendingUp, 
-  Eye, 
-  Star, 
-  Clock,
-  Users,
-  BookOpen,
-  FileText,
-  Crown,
-  Medal,
-  Award
+import {
+  Trophy, TrendingUp, Eye, Star, Clock,
+  Users, BookOpen, FileText, Crown, Medal, Award,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { rankingService } from '../services/rankingService';
@@ -19,275 +10,191 @@ import { getImageUrl, formatNumber } from '../utils/formatters';
 import Card from '../components/common/Card';
 import Loading from '../components/common/Loading';
 
+/* ── Dados de configuração ─────────────────────────────────────── */
+
+const TABS = [
+  { id: 'global', label: 'Global', icon: Trophy   },
+  { id: 'mangas', label: 'Mangás', icon: BookOpen  },
+  { id: 'novels', label: 'Novels', icon: FileText  },
+  { id: 'users',  label: 'Leitores', icon: Users   },
+];
+
+const RANKING_TYPES = {
+  global: [
+    { value: 'views',  label: 'Mais vistos',     icon: Eye  },
+    { value: 'rating', label: 'Mais bem avaliados', icon: Star },
+  ],
+  mangas: [
+    { value: 'views',   label: 'Mais vistos',       icon: Eye      },
+    { value: 'rating',  label: 'Mais bem avaliados', icon: Star     },
+    { value: 'chapters',label: 'Mais capítulos',    icon: BookOpen },
+    { value: 'recent',  label: 'Mais recentes',     icon: Clock    },
+  ],
+  novels: [
+    { value: 'views',   label: 'Mais vistos',       icon: Eye      },
+    { value: 'rating',  label: 'Mais bem avaliados', icon: Star     },
+    { value: 'chapters',label: 'Mais capítulos',    icon: FileText },
+    { value: 'recent',  label: 'Mais recentes',     icon: Clock    },
+  ],
+  users: [
+    { value: 'uploads', label: 'Mais uploads', icon: TrendingUp },
+    { value: 'views',   label: 'Mais vistos',  icon: Eye        },
+    { value: 'chapters',label: 'Capítulos lidos', icon: BookOpen },
+  ],
+};
+
+const PERIODS = [
+  { value: 'all',   label: 'Todo o período'  },
+  { value: 'year',  label: 'Último ano'      },
+  { value: 'month', label: 'Último mês'      },
+  { value: 'week',  label: 'Última semana'   },
+  { value: 'day',   label: 'Hoje'            },
+];
+
+const MEDAL = {
+  1: { icon: Crown,  color: 'text-yellow-400',  bg: 'bg-yellow-400/10' },
+  2: { icon: Medal,  color: 'text-gray-400',    bg: 'bg-gray-400/10'   },
+  3: { icon: Award,  color: 'text-orange-500',  bg: 'bg-orange-500/10' },
+};
+
+/* ── Componente principal ─────────────────────────────────────── */
+
 const Rankings = () => {
-  const [activeTab, setActiveTab] = useState('global');
-  const [rankingType, setRankingType] = useState('views');
-  const [period, setPeriod] = useState('all');
-  const [data, setData] = useState([]);
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [total, setTotal] = useState(0);
+  const [activeTab,    setActiveTab]    = useState('global');
+  const [rankingType,  setRankingType]  = useState('views');
+  const [period,       setPeriod]       = useState('all');
+  const [data,         setData]         = useState([]);
+  const [stats,        setStats]        = useState(null);
+  const [loading,      setLoading]      = useState(true);
 
-  useEffect(() => {
-    loadData();
-  }, [activeTab, rankingType, period]);
-
-  useEffect(() => {
-    loadStats();
-  }, []);
-
-  useEffect(() => {
-    if (activeTab === 'global') {
-      setPeriod('all');
-    }
-  }, [activeTab]);
-
-  useEffect(() => {
-    getTotal(activeTab);
-  }, [data]);
-
-  const handleTabClick = (tab) => {
-    setActiveTab(tab);
-  };
-
-  // Total capitulos for mangas/novels rankings
-  const getTotal = (type) => {
-    if (type === 'mangas') {
-      return stats?.totalMangas || 0;
-    } else if (type === 'novels') {
-      return stats?.totalNovels || 0;
-    }
-    return 0;
-  };
+  useEffect(() => { loadStats(); }, []);
+  useEffect(() => { loadData(); }, [activeTab, rankingType, period]);
+  useEffect(() => { if (activeTab === 'global') setPeriod('all'); }, [activeTab]);
 
   const loadData = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       let result;
-
       switch (activeTab) {
-        case 'global':
-          result = await rankingService.getGlobalRankings(rankingType);
-          setData(result.rankings || []);
-          break;
-        case 'mangas':
-          result = await rankingService.getMangaRankings(rankingType, period);
-          setData(result.mangas || []);
-          break;
-        case 'novels':
-          result = await rankingService.getNovelRankings(rankingType, period);
-          setData(result.novels || []);
-          break;
-        case 'users':
-          result = await rankingService.getUserRankings(rankingType);
-          setData(result.users || []);
-          break;
+        case 'global': result = await rankingService.getGlobalRankings(rankingType);       setData(result.rankings || []); break;
+        case 'mangas': result = await rankingService.getMangaRankings(rankingType, period); setData(result.mangas   || []); break;
+        case 'novels': result = await rankingService.getNovelRankings(rankingType, period); setData(result.novels   || []); break;
+        case 'users':  result = await rankingService.getUserRankings(rankingType);          setData(result.users    || []); break;
       }
-    } catch (error) {
-      toast.error('Erro ao carregar ranking');
-    } finally {
-      setLoading(false);
-    }
+    } catch { toast.error('Erro ao carregar ranking'); }
+    finally { setLoading(false); }
   };
 
   const loadStats = async () => {
-    try {
-      const result = await rankingService.getGlobalStats();
-      setStats(result.stats);
-    } catch (error) {
-      console.error('Erro ao carregar estatísticas:', error);
-    }
-  };
-
-  const tabs = [
-    { id: 'global', label: 'Global', icon: Trophy },
-    { id: 'mangas', label: 'Mangás', icon: BookOpen },
-    { id: 'novels', label: 'Novels', icon: FileText },
-    { id: 'users', label: 'Usuários', icon: Users }
-  ];
-
-  const rankingTypes = {
-    global: [
-      { value: 'views', label: 'Mais Vistos', icon: Eye },
-      { value: 'rating', label: 'Melhor Avaliados', icon: Star }
-    ],
-    mangas: [
-      { value: 'views', label: 'Mais Vistos', icon: Eye },
-      { value: 'rating', label: 'Melhor Avaliados', icon: Star },
-      { value: 'chapters', label: 'Mais Capítulos', icon: BookOpen },
-      { value: 'recent', label: 'Mais Recentes', icon: Clock }
-    ],
-    novels: [
-      { value: 'views', label: 'Mais Vistos', icon: Eye },
-      { value: 'rating', label: 'Melhor Avaliados', icon: Star },
-      { value: 'chapters', label: 'Mais Capítulos', icon: FileText },
-      { value: 'recent', label: 'Mais Recentes', icon: Clock }
-    ],
-    users: [
-      { value: 'uploads', label: 'Mais Uploads', icon: TrendingUp },
-      { value: 'views', label: 'Mais Vistos', icon: Eye },
-      { value: 'chapters', label: 'Capítulos Lidos', icon: BookOpen }
-    ]
-  };
-
-  const periods = [
-    { value: 'all', label: 'Todo Período' },
-    { value: 'year', label: 'Último Ano' },
-    { value: 'month', label: 'Último Mês' },
-    { value: 'week', label: 'Última Semana' },
-    { value: 'day', label: 'Hoje' }
-  ];
-
-  const getMedalIcon = (position) => {
-    switch (position) {
-      case 1:
-        return <Crown className="w-6 h-6 text-blue-500 dark:text-blue-400" />;
-      case 2:
-        return <Medal className="w-6 h-6 text-gray-400 dark:text-gray-300" />;
-      case 3:
-        return <Award className="w-6 h-6 text-orange-600 dark:text-orange-500" />;
-      default:
-        return <span className="text-lg font-bold text-gray-600 dark:text-gray-400">#{position}</span>;
-    }
+    try { const r = await rankingService.getGlobalStats(); setStats(r.stats); }
+    catch { /* silencioso */ }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600 text-white dark:bg-gradient-to-r dark:from-blue-600 dark:via-blue-700 dark:to-blue-800  shadow-md">
-        <div className="container-custom py-12">
-          <div className="flex items-center gap-4 mb-4">
-            <Trophy className="w-12 h-12" />
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0d0d0f]">
+
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <div className="relative bg-gray-950 overflow-hidden">
+        {/* grain */}
+        <div className="absolute inset-0 opacity-10 pointer-events-none"
+          style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 512 512\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.75\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\'/%3E%3C/svg%3E")' }} />
+        <div className="absolute inset-0 bg-gradient-to-b from-blue-950/30 to-transparent" />
+
+        <div className="relative container-custom py-10">
+          <div className="flex items-center gap-4 mb-8">
+            <div className="p-3 bg-yellow-500/15 border border-yellow-500/20 rounded-2xl">
+              <Trophy className="w-8 h-8 text-yellow-400" />
+            </div>
             <div>
-              <h1 className="text-4xl font-bold">Rankings</h1>
-              <p className="text-blue-100 dark:text-blue-200">
-                Os melhores mangás, novels e usuários da plataforma
-              </p>
+              <h1 className="text-3xl font-black text-white tracking-tight">Rankings</h1>
+              <p className="text-white/40 text-sm">Os melhores conteúdos e leitores da plataforma</p>
             </div>
           </div>
 
-          {/* Global Stats */}
+          {/* Stats */}
           {stats && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-              <div className="bg-white/10 backdrop-blur rounded-lg p-4 dark:bg-black/20">
-                <p className="text-blue-100 text-sm dark:text-blue-200">Total de Conteúdos</p>
-                <p className="text-3xl font-bold">{formatNumber(stats.total_content)}</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur rounded-lg p-4 dark:bg-black/20">
-                <p className="text-blue-100 text-sm dark:text-blue-200">Total de Mangás</p>
-                <p className="text-3xl font-bold">{formatNumber(stats.total_mangas)}</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur rounded-lg p-4 dark:bg-black/20">
-                <p className="text-blue-100 text-sm dark:text-blue-200">Total de Novels</p>
-                <p className="text-3xl font-bold">{formatNumber(stats.total_novels)}</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur rounded-lg p-4 dark:bg-black/20">
-                <p className="text-blue-100 text-sm dark:text-blue-200">Total de Visualizações</p>
-                <p className="text-3xl font-bold">{formatNumber(stats.total_views)}</p>
-              </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[
+                { label: 'Conteúdos',    value: stats.total_content, color: 'text-blue-400'   },
+                { label: 'Mangás',       value: stats.total_mangas,  color: 'text-green-400'  },
+                { label: 'Novels',       value: stats.total_novels,  color: 'text-purple-400' },
+                { label: 'Visualizações',value: stats.total_views,   color: 'text-yellow-400' },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                  <p className="text-white/30 text-xs mb-1">{label}</p>
+                  <p className={`text-2xl font-black ${color} tabular-nums`}>{formatNumber(value)}</p>
+                </div>
+              ))}
             </div>
           )}
         </div>
       </div>
 
-      <div className="container-custom py-8">
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  setRankingType(rankingTypes[tab.id][0].value);
-                }}
-                className={`flex items-center gap-2 px-6 py-3 rounded-lg whitespace-nowrap transform transition duration-150 ease-in-out cursor-pointer ${
-                  activeTab === tab.id
-                    ? 'bg-blue-500 text-white font-semibold shadow-lg dark:shadow-blue-700/30 dark:bg-blue-600 dark:text-blue-200'
-                    : 'bg-white text-gray-700 hover:bg-gray-100 dark:bg-black/20 dark:text-gray-300 dark:hover:bg-black/30'
-                } hover:scale-105 hover:shadow-xl`}
-              >
-                <Icon className="w-5 h-5" />
-                {tab.label}
-              </button>
-            );
-          })}
+      <div className="container-custom py-8 space-y-6">
+
+        {/* ── Tabs ──────────────────────────────────────────────── */}
+        <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+          {TABS.map(({ id, label, icon: Icon }) => (
+            <button key={id}
+              onClick={() => { setActiveTab(id); setRankingType(RANKING_TYPES[id][0].value); }}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all flex-shrink-0 ${
+                activeTab === id
+                  ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/20'
+                  : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-800'
+              }`}>
+              <Icon className="w-4 h-4" />
+              {label}
+            </button>
+          ))}
         </div>
 
-        {/* Filters */}
-        <Card className="p-4 mb-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            {/* Ranking Type */}
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
-                Tipo de Ranking
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {rankingTypes[activeTab]?.map((type) => {
-                  const Icon = type.icon;
-                  return (
-                    <button
-                      key={type.value}
-                      onClick={() => setRankingType(type.value)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
-                        rankingType === type.value
-                          ? 'bg-primary-600 text-white dark:bg-primary-500 dark:text-white font-semibold shadow-lg dark:shadow-primary-700/30'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-black/20 dark:text-gray-300 dark:hover:bg-black/30'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
-                      {type.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Period Filter (only for mangas/novels) */}
-            {(activeTab === 'mangas' || activeTab === 'novels') && (
-              <div className="w-full md:w-48">
-                <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
-                  Período
-                </label>
-                <select
-                  value={period}
-                  onChange={(e) => setPeriod(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-black/20 dark:border-gray-700 dark:text-gray-300 dark:focus:ring-primary-600"
-                >
-                  {periods.map((p) => (
-                    <option key={p.value} value={p.value}>
-                      {p.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+        {/* ── Filtros ───────────────────────────────────────────── */}
+        <div className="flex flex-col md:flex-row gap-4">
+          {/* Tipo de ranking */}
+          <div className="flex flex-wrap gap-2">
+            {RANKING_TYPES[activeTab]?.map(({ value, label, icon: Icon }) => (
+              <button key={value} onClick={() => setRankingType(value)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  rankingType === value
+                    ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                    : 'bg-gray-100 dark:bg-gray-800/60 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                }`}>
+                <Icon className="w-3.5 h-3.5" />
+                {label}
+              </button>
+            ))}
           </div>
-        </Card>
 
-        {/* Rankings List */}
+          {/* Período */}
+          {(activeTab === 'mangas' || activeTab === 'novels') && (
+            <select value={period} onChange={(e) => setPeriod(e.target.value)}
+              className="px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-800 rounded-lg bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500/40 md:ml-auto">
+              {PERIODS.map(({ value, label }) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {/* ── Lista ─────────────────────────────────────────────── */}
         {loading ? (
           <Loading />
+        ) : data.length === 0 ? (
+          <div className="text-center py-16">
+            <Trophy className="w-12 h-12 text-gray-300 dark:text-gray-700 mx-auto mb-3" />
+            <p className="text-gray-400 dark:text-gray-500">Nenhum resultado encontrado</p>
+          </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {data.map((item, index) => (
               <RankingItem
-                key={item.id ? `${item.id}-${index}` : `ranking-${index}`}
+                key={item.id ? `${item.id}-${index}` : `rank-${index}`}
                 item={item}
                 position={index + 1}
                 type={activeTab}
                 rankingType={rankingType}
-                getMedalIcon={getMedalIcon}
               />
             ))}
-
-            {data.length === 0 && (
-              <Card className="p-12 text-center">
-                <Trophy className="w-16 h-16 text-gray-400 mx-auto mb-4 dark:text-gray-300" />
-                <p className="text-gray-500 dark:text-gray-400">Nenhum resultado encontrado</p>
-              </Card>
-            )}
           </div>
         )}
       </div>
@@ -295,119 +202,102 @@ const Rankings = () => {
   );
 };
 
-const RankingItem = ({ item, position, type, rankingType, getMedalIcon }) => {
+/* ── RankingItem ──────────────────────────────────────────────────── */
+
+const RankingItem = ({ item, position, type, rankingType }) => {
   if (!item) return null;
-  
-  const isUser = type === 'users';
-  const contentType = item.content_type || type.slice(0, -1); // Remove 's' from 'mangas'/'novels'
 
-  const getStatsValue = () => {
-    switch (rankingType) {
-      case 'views':
-        return isUser ? item.total_views : item.views;
-      case 'rating':
-        return item.rating;
-      case 'chapters':
-        return isUser ? item.total_chapters : item.chapter_count;
-      case 'uploads':
-        return item.total_uploads;
-      default:
-        return item.views;
-    }
-  };
+  const isUser      = type === 'users';
+  const contentType = item.content_type || type.replace(/s$/, '');
+  const medal       = MEDAL[position];
 
-  const getStatsLabel = () => {
-    switch (rankingType) {
-      case 'views':
-        return 'visualizações';
-      case 'rating':
-        return 'avaliação';
-      case 'chapters':
-        return 'capítulos';
-      case 'uploads':
-        return 'uploads';
-      default:
-        return 'visualizações';
-    }
-  };
+  const statsValue = {
+    views:    isUser ? item.total_views    : item.views,
+    rating:   item.rating,
+    chapters: isUser ? item.total_chapters : item.chapter_count,
+    uploads:  item.total_uploads,
+    recent:   item.views,
+  }[rankingType] ?? item.views;
 
-  if (isUser) {
-    return (
-      <Card className={`p-4 hover:shadow-lg transition ${position <= 3 ? 'border-2 border-blue-400 dark:border-blue-300' : ''}`}>
-        <div className="flex items-center gap-4">
-          <div className="flex-shrink-0 w-16 flex items-center justify-center">
-            {getMedalIcon(position)}
-          </div>
+  const statsLabel = {
+    views: 'visualizações', rating: 'avaliação',
+    chapters: 'capítulos', uploads: 'uploads', recent: 'visualizações',
+  }[rankingType] ?? 'visualizações';
 
-          <div className="w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0 dark:bg-primary-500">
-            {item.username?.charAt(0).toUpperCase()}
-          </div>
-
-          <div className="flex-1">
-            <h3 className="font-semibold text-lg text-gray-900 dark:text-white">{item.username}</h3>
-            <p className="text-sm text-gray-600 capitalize dark:text-gray-300">{item.role}</p>
-          </div>
-
-          <div className="text-right">
-            <p className="text-2xl font-bold text-primary-600 dark:text-primary-500">
-              {formatNumber(getStatsValue())}
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{getStatsLabel()}</p>
-          </div>
-        </div>
-      </Card>
-    );
-  }
-
-  const linkTo = type === 'global' 
-    ? `/${contentType}/${item.id}` 
+  const linkTo = type === 'global'
+    ? `/${contentType}/${item.id}`
     : `/${contentType === 'manga' ? 'manga' : 'novel'}/${item.id}`;
 
-  return (
-    <Link to={linkTo}>
-      <Card className={`p-4 hover:shadow-lg transition ${position <= 3 ? 'border-2 border-blue-400 dark:border-blue-300' : ''}`}>
-        <div className="flex items-center gap-4">
-          <div className="flex-shrink-0 w-16 flex items-center justify-center">
-            {getMedalIcon(position)}
-          </div>
+  const inner = (
+    <div className={`flex items-center gap-4 p-4 rounded-2xl border transition-all hover:shadow-md ${
+      position <= 3
+        ? 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 hover:border-primary-200 dark:hover:border-primary-800'
+        : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-900 hover:border-gray-200 dark:hover:border-gray-800'
+    }`}>
 
-          <img
-            src={getImageUrl(item.cover_image)}
-            alt={item.title}
-            className="w-16 h-24 object-cover rounded flex-shrink-0"
-            onError={(e) => {
-              e.target.src = 'https://via.placeholder.com/100x150?text=No+Image';
-            }}
-          />
-
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-lg text-gray-900 line-clamp-1 dark:text-white">
-              {item.title}
-            </h3>
-            <div className="flex gap-2 mt-1">
-              {contentType && (
-                <span className="inline-block px-2 py-1 text-xs bg-primary-100 text-primary-700 rounded capitalize dark:bg-primary-900/30 dark:text-primary-200">
-                  {contentType}
-                </span>
-              )}
-              {item.type && (
-                <span className="inline-block px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded capitalize dark:bg-black/20 dark:text-gray-300">
-                  {item.type}
-                </span>
-              )}
-            </div>
+      {/* Posição */}
+      <div className="flex-shrink-0 w-14 flex items-center justify-center">
+        {medal ? (
+          <div className={`p-2 rounded-xl ${medal.bg}`}>
+            <medal.icon className={`w-5 h-5 ${medal.color}`} />
           </div>
+        ) : (
+          <span className="text-lg font-black text-gray-300 dark:text-gray-700">#{position}</span>
+        )}
+      </div>
 
-          <div className="text-right flex-shrink-0">
-            <p className="text-2xl font-bold text-primary-600 dark:text-primary-500">
-              {formatNumber(getStatsValue())}
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{getStatsLabel()}</p>
-          </div>
+      {/* Capa ou avatar */}
+      {isUser ? (
+        <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center text-white font-black text-base flex-shrink-0">
+          {item.username?.charAt(0).toUpperCase()}
         </div>
-      </Card>
-    </Link>
+      ) : (
+        <img
+          src={getImageUrl(item.cover_image)}
+          alt={item.title}
+          className="w-12 h-16 object-cover rounded-xl flex-shrink-0"
+          onError={(e) => { e.target.src = 'https://via.placeholder.com/48x64?text=N/A'; }}
+        />
+      )}
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <h3 className="font-bold text-gray-900 dark:text-white truncate">
+          {isUser ? item.username : item.title}
+        </h3>
+        <div className="flex items-center gap-2 mt-0.5">
+          {isUser ? (
+            <span className="text-xs text-gray-400 capitalize">{item.role}</span>
+          ) : (
+            <>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md uppercase ${
+                contentType === 'manga'
+                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                  : 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+              }`}>
+                {contentType}
+              </span>
+              {item.type && (
+                <span className="text-xs text-gray-400 dark:text-gray-500">{item.type}</span>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Valor */}
+      <div className="text-right flex-shrink-0">
+        <p className="text-xl font-black text-primary-600 dark:text-primary-400 tabular-nums">
+          {rankingType === 'rating' ? Number(statsValue || 0).toFixed(1) : formatNumber(statsValue)}
+        </p>
+        <p className="text-xs text-gray-400 dark:text-gray-500">{statsLabel}</p>
+      </div>
+    </div>
   );
+
+  return isUser
+    ? <div>{inner}</div>
+    : <Link to={linkTo}>{inner}</Link>;
 };
 
 export default Rankings;

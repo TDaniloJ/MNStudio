@@ -3,81 +3,56 @@ import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
 import { useCoins } from '../contexts/CoinContext';
 import { coinService } from '../services/coinService';
-
-/**
- * Planos estáticos de assinatura.
- * Se o backend tiver um endpoint de planos, substitua por uma chamada de API.
- */
-export const PLANS = [
-  {
-    id: 'free',
-    name: 'Grátis',
-    price: 0,
-    period: null,
-    description: 'Para quem está começando',
-    color: 'gray',
-    features: [
-      'Acesso a mangás e novels gratuitos',
-      '10 moedas de boas-vindas',
-      'Leitura de capítulos públicos',
-      'Histórico de leitura',
-    ],
-    limitations: [
-      'Sem acesso a conteúdo premium',
-      'Sem capítulos antecipados',
-    ],
-  },
-  {
-    id: 'premium',
-    name: 'Premium',
-    price: 19.90,
-    period: 'mês',
-    description: 'Para leitores assíduos',
-    color: 'primary',
-    highlight: true,
-    features: [
-      'Tudo do plano Grátis',
-      '100 moedas por mês',
-      'Acesso a todo conteúdo premium',
-      'Capítulos antecipados',
-      'Sem anúncios',
-      'Suporte prioritário',
-    ],
-    limitations: [],
-  },
-  {
-    id: 'ultimate',
-    name: 'Ultimate',
-    price: 39.90,
-    period: 'mês',
-    description: 'Para os fãs mais dedicados',
-    color: 'purple',
-    features: [
-      'Tudo do plano Premium',
-      '300 moedas por mês',
-      'Acesso antecipado a novos títulos',
-      'Badge exclusivo de perfil',
-      'Download para leitura offline',
-      'Acesso a conteúdo exclusivo',
-    ],
-    limitations: [],
-  },
-];
+import { subscriptionService } from '../services/subscriptionService';
 
 export function useSubscription() {
-  const { user } = useAuthStore();
+  const { user, updateUser, setUser } = useAuthStore();
   const { coins, refreshBalance } = useCoins();
 
-  const [packages, setPackages]           = useState([]);
+  const [plans, setPlans] = useState([]);
+  const [loadingPlans, setLoadingPlans] = useState(true);
+  const [plansError, setPlansError] = useState(null);
+
+  const [packages, setPackages] = useState([]);
   const [loadingPackages, setLoadingPackages] = useState(true);
-  const [purchasing, setPurchasing]       = useState(null); // pkg.id sendo comprado
 
-  // Determina o plano atual do usuário com base no campo role/subscription
-  // Adapte o campo conforme o que o seu backend retorna
-  const currentPlanId = user?.subscription_plan ?? 'free';
-  const currentPlan   = PLANS.find((p) => p.id === currentPlanId) ?? PLANS[0];
+  const [purchasing, setPurchasing] = useState(null);
 
-  /* ── Pacotes de moedas ──────────────────────────────────────────── */
+  // 🔥 plano atual
+const currentPlanId = user?.subscription_plan ?? 'free';
+
+const fallbackPlan = {
+  id: 'free',
+  name: 'Free',
+  description: 'Plano gratuito',
+  price: 0,
+  features: [],
+  limitations: [],
+};
+
+const currentPlan =
+  plans?.find((p) => p?.id === currentPlanId) || fallbackPlan;
+
+  /* ── Carregar planos ───────────────────────────────────────── */
+
+  const loadPlans = useCallback(async () => {
+    setLoadingPlans(true);
+    setPlansError(null);
+
+    try {
+      const data = await subscriptionService.getAllPlans();
+      setPlans(data.plans ?? []);
+    } catch (error) {
+      setPlansError(error);
+      toast.error(
+        'Erro ao carregar planos' + (error.message ? `: ${error.message}` : '')
+      );
+    } finally {
+      setLoadingPlans(false);
+    }
+  }, []);
+
+  /* ── Pacotes de moedas ───────────────────────────────────── */
 
   const loadPackages = useCallback(async () => {
     setLoadingPackages(true);
@@ -92,10 +67,11 @@ export function useSubscription() {
   }, []);
 
   useEffect(() => {
+    loadPlans();
     loadPackages();
-  }, [loadPackages]);
+  }, [loadPlans, loadPackages]);
 
-  /* ── Comprar pacote de moedas ───────────────────────────────────── */
+  /* ── Comprar moedas ───────────────────────────────────── */
 
   const purchasePackage = async (pkg) => {
     setPurchasing(pkg.id);
@@ -110,15 +86,24 @@ export function useSubscription() {
     }
   };
 
-  /* ── Assinar plano ──────────────────────────────────────────────── */
+  /* ── Assinar plano (REAL) ───────────────────────────────── */
 
   const subscribePlan = async (planId) => {
     if (planId === currentPlanId) return;
+
     setPurchasing(`plan_${planId}`);
+
     try {
-      // Substitua pelo endpoint real de assinatura quando disponível
-      // await subscriptionService.subscribe(planId);
-      toast.success('Em breve: pagamentos de planos estarão disponíveis!');
+      const result = await subscriptionService.subscribe(planId);
+
+      toast.success(result.message || 'Plano ativado com sucesso!');
+
+      // 🔥 ATUALIZA USUÁRIO NO FRONT
+      setUser({
+        ...user,
+        subscription_plan: planId,
+      });
+
     } catch (error) {
       toast.error(error.response?.data?.error || 'Erro ao assinar plano');
     } finally {
@@ -129,8 +114,9 @@ export function useSubscription() {
   return {
     user,
     coins,
-    plans: PLANS,
+    plans,
     currentPlan,
+    loadingPlans,
     packages,
     loadingPackages,
     purchasing,

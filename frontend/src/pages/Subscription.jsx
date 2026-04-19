@@ -19,9 +19,16 @@ export default function Subscription() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
   const {
-    user, coins, plans, currentPlan,
-    packages, loadingPackages,
-    purchasing, purchasePackage, subscribePlan,
+    user,
+    coins,
+    plans,
+    currentPlan,
+    packages,
+    loadingPackages,
+    loadingPlans,
+    purchasing,
+    purchasePackage,
+    subscribePlan,
   } = useSubscription();
 
   const [transactions, setTransactions]     = useState([]);
@@ -31,6 +38,16 @@ export default function Subscription() {
   useEffect(() => {
     if (!isAuthenticated) navigate('/login');
   }, [isAuthenticated, navigate]);
+
+  if (loadingPlans || loadingPackages || !currentPlan) {
+    return <Loading fullScreen />;
+  }
+
+  const sortedPlans = [...plans].sort((a, b) => {
+    if (a.highlight) return -1;
+    if (b.highlight) return 1;
+    return a.price - b.price;
+  });
 
   const loadTransactions = async () => {
     if (showHistory) { setShowHistory(false); return; }
@@ -79,11 +96,6 @@ export default function Subscription() {
             </p>
           </div>
         </div>
-
-        <Button variant="outline" onClick={loadTransactions} loading={loadingTx}>
-          <History className="w-4 h-4 mr-2" />
-          {showHistory ? 'Ocultar histórico' : 'Histórico de moedas'}
-        </Button>
       </div>
 
       {/* ── Resumo: plano atual + saldo ────────────────────────────── */}
@@ -98,13 +110,13 @@ export default function Subscription() {
               Plano atual
             </p>
             <p className="text-2xl font-extrabold text-primary-900 dark:text-white">
-              {currentPlan.name}
+              {currentPlan?.name ?? 'Carregando...'}
             </p>
             <p className="text-sm text-primary-700 dark:text-primary-300 mt-0.5">
-              {currentPlan.description}
+              {currentPlan?.description ?? 'Descrição não disponível'}
             </p>
           </div>
-          {currentPlan.id === 'free' && (
+          {currentPlan?.id === 'free' && (
             <Button size="sm" onClick={() => document.getElementById('plans-section').scrollIntoView({ behavior: 'smooth' })}>
               Fazer upgrade
             </Button>
@@ -139,114 +151,38 @@ export default function Subscription() {
           Escolha o plano ideal para a sua experiência de leitura.
         </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {plans.map((plan) => (
-            <PlanCard
-              key={plan.id}
-              plan={plan}
-              isCurrent={currentPlan.id === plan.id}
-              purchasing={purchasing}
-              onSubscribe={subscribePlan}
-            />
-          ))}
-        </div>
-      </section>
-
-      {/* ── Pacotes de moedas ──────────────────────────────────────── */}
-      <section className="mb-14">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-3">
-            <Coins className="w-5 h-5 text-yellow-500" />
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Comprar Moedas</h2>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-            <TrendingUp className="w-4 h-4" />
-            Pacotes maiores = mais economia
-          </div>
-        </div>
-        <p className="text-gray-500 dark:text-gray-400 mb-7">
-          Use moedas para acessar conteúdo premium, capítulos antecipados e recursos de IA.
-        </p>
-
-        {packages.length === 0 ? (
-          <p className="text-center py-12 text-gray-400 dark:text-gray-500">
-            Nenhum pacote disponível no momento.
-          </p>
+        {plans.length === 0 ? (
+          <p className="text-gray-500">Nenhum plano disponível no momento.</p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {packages.map((pkg) => (
-              <CoinPackageCard
-                key={pkg.id}
-                pkg={pkg}
-                purchasing={purchasing}
-                onPurchase={purchasePackage}
-              />
-            ))}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {sortedPlans.map((plan) => {
+              const isCurrent = currentPlan?.id === plan.id;
+
+              return (
+                <div key={plan.id} className="relative">
+                  
+                  {plan.highlight && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                      <span className="bg-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow">
+                        MAIS POPULAR
+                      </span>
+                    </div>
+                  )}
+
+                  <PlanCard
+                    plan={plan}
+                    isCurrent={isCurrent}
+                    purchasing={purchasing}
+                    onSubscribe={subscribePlan}
+                  />
+                </div>
+              );
+            })}
           </div>
         )}
+
       </section>
 
-      {/* ── Histórico de transações ────────────────────────────────── */}
-      {showHistory && (
-        <Card className="p-6 mb-10">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-5">
-            Histórico de Transações
-          </h2>
-
-          {transactions.length === 0 ? (
-            <p className="text-center py-8 text-gray-400 dark:text-gray-500">
-              Nenhuma transação encontrada.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {transactions.map((tx) => (
-                <div
-                  key={tx.id}
-                  className="flex items-center justify-between p-4 rounded-xl border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
-                      {txIcon(tx.type)}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {tx.description}
-                      </p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500">
-                        {formatDate(tx.created_at)}
-                      </p>
-                    </div>
-                  </div>
-                  <span className={`text-base font-bold ${txColor(tx.type)}`}>
-                    {tx.amount > 0 ? '+' : ''}{tx.amount}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-      )}
-
-      {/* ── Info ───────────────────────────────────────────────────── */}
-      <Card className="p-6 bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800">
-        <h3 className="font-semibold text-blue-900 dark:text-blue-200 mb-3 flex items-center gap-2">
-          <span>ℹ️</span> Como funcionam os planos e moedas?
-        </h3>
-        <ul className="space-y-2 text-sm text-blue-800 dark:text-blue-300">
-          {[
-            'Planos dão acesso contínuo a conteúdos premium durante a vigência.',
-            'Moedas são gastas por ação: capítulos antecipados, recursos de IA, etc.',
-            'Cada ação mostra o custo antes de confirmar.',
-            'Pacotes maiores de moedas oferecem melhor custo-benefício.',
-            'Pagamentos são processados de forma segura.',
-          ].map((item) => (
-            <li key={item} className="flex items-start gap-2">
-              <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-500" />
-              {item}
-            </li>
-          ))}
-        </ul>
-      </Card>
     </div>
   );
 }

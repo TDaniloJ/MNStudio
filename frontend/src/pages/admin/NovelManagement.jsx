@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Edit, Trash2, Eye, Search, List } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Search, List, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { novelService } from '../../services/novelService';
 import { getImageUrl, formatNumber, formatDate } from '../../utils/formatters';
@@ -8,86 +8,58 @@ import { usePagination } from '../../hooks/usePagination';
 import { useDebounce } from '../../hooks/useDebounce';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
-import SearchBar from '../../components/common/SearchBar';
 import Loading from '../../components/common/Loading';
 import Pagination from '../../components/common/Pagination';
 import EmptyState from '../../components/common/EmptyState';
 
+const STATUS_STYLE = {
+  ongoing:   'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
+  completed: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+  hiatus:    'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300',
+};
+const STATUS_LABEL = { ongoing: 'Ativo', completed: 'Completo', hiatus: 'Hiato' };
+
 const NovelManagement = () => {
   const navigate = useNavigate();
   const { page, goToPage } = usePagination();
-  const [novels, setNovels] = useState([]);
-  const [pagination, setPagination] = useState({ total: 0, pages: 1 });
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [novels,      setNovels]      = useState([]);
+  const [pagination,  setPagination]  = useState({ total: 0, pages: 1 });
+  const [loading,     setLoading]     = useState(true);
+  const [search,      setSearch]      = useState('');
+  const [chaptersCount, setChaptersCount] = useState({});
   const debouncedSearch = useDebounce(search, 500);
-  const [chaptersCount, setChaptersCount] = useState({}); // ✅ Estado para contagem
 
-  useEffect(() => {
-    loadNovels();
-  }, [page, debouncedSearch]);
+  useEffect(() => { loadNovels(); }, [page, debouncedSearch]);
 
   const loadNovels = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const data = await novelService.getAll({
-        page,
-        limit: 20,
-        search: debouncedSearch
-      });
+      const data = await novelService.getAll({ page, limit: 20, search: debouncedSearch });
       setNovels(data.novels);
       setPagination(data.pagination);
-
-      // ✅ CARREGA CONTAGEM DE CAPÍTULOS EM BACKGROUND
       loadChaptersCount(data.novels);
-    } catch (error) {
-      toast.error('Erro ao carregar novels');
-    } finally {
-      setLoading(false);
-    }
+    } catch { toast.error('Erro ao carregar novels'); }
+    finally { setLoading(false); }
   };
 
-  // ✅ FUNÇÃO PARA CARREGAR CONTAGEM DE CAPÍTULOS
-  const loadChaptersCount = async (novelsList) => {
-    try {
-      const counts = {};
-
-      if (novelsList && novelsList.length > 0) {
-        for (const novel of novelsList) {
-          try {
-            const chaptersData = await novelService.getNovelChapters(novel.id);
-            counts[`novel_${novel.id}`] = chaptersData.chapters?.length || 0;
-          } catch (error) {
-            console.warn(`⚠️ Não foi possível carregar capítulos da novel ${novel.id}:`, error.message);
-            counts[`novel_${novel.id}`] = 0;
-          }
-        }
-      }
-
-      setChaptersCount(counts);
-    } catch (error) {
-      console.error('Erro ao carregar contagem de capítulos:', error);
+  const loadChaptersCount = async (list) => {
+    const counts = {};
+    for (const n of (list || [])) {
+      try { const d = await novelService.getNovelChapters(n.id); counts[`novel_${n.id}`] = d.chapters?.length || 0; }
+      catch { counts[`novel_${n.id}`] = 0; }
     }
+    setChaptersCount(counts);
   };
 
-  // ✅ FUNÇÃO PARA OBTER CONTAGEM
-  const getChaptersCount = (novel) => {
-    const key = `novel_${novel.id}`;
-    return chaptersCount[key] !== undefined ? chaptersCount[key] : '...';
+  const getChapCount = (novel) => {
+    const v = chaptersCount[`novel_${novel.id}`];
+    return v !== undefined ? v : '…';
   };
 
   const handleDelete = async (id, title) => {
-    if (!confirm(`Tem certeza que deseja deletar "${title}"?`)) {
-      return;
-    }
-
-    try {
-      await novelService.delete(id);
-      toast.success('Novel deletada com sucesso');
-      loadNovels();
-    } catch (error) {
-      toast.error('Erro ao deletar novel');
-    }
+    if (!confirm(`Deletar "${title}"?`)) return;
+    try { await novelService.delete(id); toast.success('Novel deletada'); loadNovels(); }
+    catch { toast.error('Erro ao deletar novel'); }
   };
 
   return (
@@ -95,141 +67,82 @@ const NovelManagement = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gerenciar Novels</h1>
-          <p className="text-gray-600 dark:text-gray-200">
-            {pagination.total} Novel{pagination.total !== 1 ? 's' : ''} Cadastrada{pagination.total !== 1 ? 's' : ''}
+          <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Novels</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            {pagination.total} novel{pagination.total !== 1 ? 's' : ''} cadastrada{pagination.total !== 1 ? 's' : ''}
           </p>
         </div>
         <Link to="/admin/novels/new">
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
+          <Button size="sm">
+            <Plus className="w-3.5 h-3.5 mr-1.5" />
             Nova Novel
           </Button>
         </Link>
       </div>
 
       {/* Search */}
-      <Card className="p-4">
-        <SearchBar
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input
+          type="text"
           value={search}
-          onChange={setSearch}
+          onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar novels..."
+          className="w-full pl-9 pr-4 py-2 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/40 text-gray-900 dark:text-white placeholder-gray-400"
         />
-      </Card>
+      </div>
 
-      {/* Table */}
-      {loading ? (
-        <Loading />
-      ) : novels.length === 0 ? (
-        <EmptyState
-          title="Nenhuma novel encontrada"
-          description="Comece criando sua primeira novel"
-        />
+      {loading ? <Loading /> : novels.length === 0 ? (
+        <EmptyState icon={FileText} title="Nenhuma novel encontrada" description="Comece criando sua primeira novel" />
       ) : (
         <>
-          <Card className="overflow-hidden">
+          <Card className="overflow-hidden p-0">
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b dark:bg-gray-700 dark:border-gray-600">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-300">
-                      Novel
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-300">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-300">
-                      Capítulos
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-300">
-                      Views
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-300">
-                      Criado em
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase dark:text-gray-300">
-                      Ações
-                    </th>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800">
+                    {['Novel', 'Status', 'Capítulos', 'Views', 'Criado em', ''].map((h) => (
+                      <th key={h} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 ${h === '' ? 'text-right' : ''}`}>
+                        {h}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
                   {novels.map((novel) => (
-                    <tr key={novel.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-6 py-4">
+                    <tr key={novel.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors group">
+                      <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <img
-                            src={getImageUrl(novel.cover_image)}
-                            alt={novel.title}
-                            className="w-12 h-16 object-cover rounded"
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                              e.target.parentElement.innerHTML = `
-                                <div class="w-12 h-16 flex items-center justify-center bg-gray-300 rounded dark:bg-gray-600">
-                                  <svg class="w-6 h-6 text-gray-400 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                  </svg>
-                                </div>
-                              `;
-                            }}
-                          />
-                          <div>
-                            <p className="font-medium text-gray-900 dark:text-white">
-                              {novel.title}
-                            </p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              {novel.author}
-                            </p>
+                          <div className="w-9 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 flex-shrink-0">
+                            <img src={getImageUrl(novel.cover_image)} alt={novel.title}
+                              className="w-full h-full object-cover"
+                              onError={(e) => { e.target.src = 'https://via.placeholder.com/36x48?text=N/A'; }} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-gray-900 dark:text-white truncate max-w-[200px]">{novel.title}</p>
+                            {novel.author && <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{novel.author}</p>}
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          novel.status === 'ongoing' ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100' :
-                          novel.status === 'completed' ? 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100' :
-                          'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100'
-                        }`}>
-                          {novel.status === 'ongoing' ? 'Ativo' :
-                           novel.status === 'completed' ? 'Completo' : 'Hiato'}
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-lg ${STATUS_STYLE[novel.status] ?? STATUS_STYLE.hiatus}`}>
+                          {STATUS_LABEL[novel.status] ?? novel.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                        {/* ✅ ATUALIZADO PARA USAR A NOVA CONTAGEM */}
-                        {getChaptersCount(novel) === '...' ? (
-                          <span className="text-gray-400 dark:text-gray-500">Carregando...</span>
-                        ) : (
-                          getChaptersCount(novel)
-                        )}
+                      <td className="px-4 py-3">
+                        {getChapCount(novel) === '…'
+                          ? <span className="text-gray-300 dark:text-gray-600 text-xs">…</span>
+                          : <span className="font-medium text-gray-900 dark:text-white tabular-nums">{getChapCount(novel)}</span>}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                        {formatNumber(novel.views)}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500 dark:text-white">
-                        {formatDate(novel.created_at)}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Link to={`/admin/novels/${novel.id}/chapters`}>
-                            <button 
-                              className="p-2 text-gray-600 hover:text-primary-600 transition dark:text-gray-300 dark:hover:text-primary-400"
-                              title="Gerenciar capítulos"
-                            >
-                              <List className="w-4 h-4" />
-                            </button>
-                          </Link>
-                          <Link to={`/novel/${novel.id}`}>
-                            <button className="p-2 text-gray-600 hover:text-primary-600 transition dark:text-gray-300 dark:hover:text-primary-400">
-                              <Eye className="w-4 h-4" />
-                            </button>
-                          </Link>
-                          <Link to={`/admin/novels/${novel.id}/edit`}>
-                            <button className="p-2 text-gray-600 hover:text-primary-600 transition dark:text-gray-300 dark:hover:text-primary-400">
-                              <Edit className="w-4 h-4" />
-                            </button>
-                          </Link>
-                          <button
-                            onClick={() => handleDelete(novel.id, novel.title)}
-                            className="p-2 text-gray-600 hover:text-red-600 transition dark:text-gray-300 dark:hover:text-red-400"
-                          >
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400 tabular-nums">{formatNumber(novel.views)}</td>
+                      <td className="px-4 py-3 text-gray-400 dark:text-gray-500 whitespace-nowrap">{formatDate(novel.created_at)}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <ActionBtn to={`/admin/novels/${novel.id}/chapters`} title="Capítulos"><List className="w-4 h-4" /></ActionBtn>
+                          <ActionBtn to={`/novel/${novel.id}`} title="Ver"><Eye className="w-4 h-4" /></ActionBtn>
+                          <ActionBtn to={`/admin/novels/${novel.id}/edit`} title="Editar"><Edit className="w-4 h-4" /></ActionBtn>
+                          <button onClick={() => handleDelete(novel.id, novel.title)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
@@ -240,16 +153,19 @@ const NovelManagement = () => {
               </table>
             </div>
           </Card>
-
-          <Pagination
-            currentPage={pagination.page}
-            totalPages={pagination.pages}
-            onPageChange={goToPage}
-          />
+          <Pagination currentPage={pagination.page} totalPages={pagination.pages} onPageChange={goToPage} />
         </>
       )}
     </div>
   );
 };
+
+const ActionBtn = ({ to, title, children }) => (
+  <Link to={to} title={title}>
+    <button className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors">
+      {children}
+    </button>
+  </Link>
+);
 
 export default NovelManagement;

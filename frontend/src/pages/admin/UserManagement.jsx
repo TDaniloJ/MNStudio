@@ -1,36 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Crown,
-  Shield,
-  User,
-  Trash2,
-  Search,
-  Edit,
-  Eye,
-  Lock,
-  Ban,
-  CheckCircle,
-  XCircle,
-  Filter,
-  Download,
-  Mail,
-  UserPlus,
-  BarChart3,
-  Clock,
-  Heart,
-  MessageSquare,
-  BookOpen,
-  FileText,
-  TrendingUp,
-  Activity,
-  Send
+  Crown, Shield, User, Trash2, Search, Edit, Eye,
+  Lock, Ban, CheckCircle, XCircle, Filter, Download,
+  Mail, UserPlus, BarChart3, Clock, Heart, MessageSquare,
+  BookOpen, FileText, TrendingUp, Activity, Send, Copy,
+  Users, ChevronUp, ChevronDown,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import { formatDate, formatNumber, formatDateTime, getImageUrl } from '../../utils/formatters';
 import { ROLE_LABELS } from '../../utils/constants';
 import Card from '../../components/common/Card';
-import SearchBar from '../../components/common/SearchBar';
 import Loading from '../../components/common/Loading';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
@@ -39,1529 +19,590 @@ import Pagination from '../../components/common/Pagination';
 import { useDebounce } from '../../hooks/useDebounce';
 import { usePagination } from '../../hooks/usePagination';
 
+/* ── Helpers ──────────────────────────────────────────────────────── */
+
+const ROLE_CONFIG = {
+  admin:    { label: 'Admin',    color: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-100 dark:bg-yellow-900/30', icon: Crown  },
+  uploader: { label: 'Uploader', color: 'text-blue-600 dark:text-blue-400',    bg: 'bg-blue-100 dark:bg-blue-900/30',    icon: Shield },
+  reader:   { label: 'Leitor',   color: 'text-gray-600 dark:text-gray-400',    bg: 'bg-gray-100 dark:bg-gray-800',       icon: User   },
+};
+
+const fieldCls = 'w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/40';
+
+const genPassword = () => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  return Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+};
+
+/* ── Componente principal ─────────────────────────────────────────── */
+
 const UserManagement = () => {
-  const [users, setUsers] = useState([]);
-  const [pagination, setPagination] = useState({ total: 0, pages: 1 });
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [selectedUser, setSelectedUser] = useState(null);
+  const [users,         setUsers]         = useState([]);
+  const [pagination,    setPagination]    = useState({ total: 0, pages: 1 });
+  const [loading,       setLoading]       = useState(true);
+  const [search,        setSearch]        = useState('');
+  const [selectedUser,  setSelectedUser]  = useState(null);
   const [selectedUsers, setSelectedUsers] = useState([]);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showBulkEmailModal, setShowBulkEmailModal] = useState(false);
-  const [showStatsModal, setShowStatsModal] = useState(false);
-  const [filters, setFilters] = useState({
-    role: '',
-    status: '',
-    dateFrom: '',
-    dateTo: ''
-  });
-  const [showFilters, setShowFilters] = useState(false);
-  const [stats, setStats] = useState({
-    total: 0,
-    active: 0,
-    inactive: 0,
-    admins: 0,
-    uploaders: 0,
-    readers: 0,
-    newToday: 0,
-    newThisWeek: 0
-  });
+  const [showFilters,   setShowFilters]   = useState(false);
+  const [filters,       setFilters]       = useState({ role: '', status: '', dateFrom: '', dateTo: '' });
+  const [stats,         setStats]         = useState({ total: 0, active: 0, inactive: 0, admins: 0, uploaders: 0, readers: 0, newToday: 0, newThisWeek: 0 });
+
+  // Modais
+  const [modal, setModal] = useState(null); // 'create' | 'edit' | 'details' | 'password' | 'email' | 'stats'
 
   const debouncedSearch = useDebounce(search, 500);
   const { page, goToPage } = usePagination();
 
-  useEffect(() => {
-    loadUsers();
-    loadStats();
-  }, [page, debouncedSearch, filters]);
+  useEffect(() => { loadUsers(); loadStats(); }, [page, debouncedSearch, filters]);
 
   const loadUsers = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await api.get('/admin/users', {
-        params: {
-          search: debouncedSearch,
-          page,
-          limit: 20,
-          ...filters
-        }
-      });
-      setUsers(response.data.users || []);
-      setPagination(response.data.pagination || { total: 0, pages: 1 });
-    } catch (error) {
-      console.error('Erro ao carregar usuários:', error);
-      toast.error('Erro ao carregar usuários');
-    } finally {
-      setLoading(false);
-    }
+      const res = await api.get('/admin/users', { params: { search: debouncedSearch, page, limit: 20, ...filters } });
+      setUsers(res.data.users || []);
+      setPagination(res.data.pagination || { total: 0, pages: 1 });
+    } catch { toast.error('Erro ao carregar usuários'); }
+    finally { setLoading(false); }
   };
 
   const loadStats = async () => {
-    try {
-      const response = await api.get('/admin/users/stats');
-      setStats(response.data.stats || {});
-    } catch (error) {
-      console.error('Erro ao carregar estatísticas:', error);
-    }
+    try { const r = await api.get('/admin/users/stats'); setStats(r.data.stats || {}); }
+    catch { /* silencioso */ }
   };
 
-  const handleChangeRole = async (userId, newRole) => {
-    try {
-      await api.put(`/admin/users/${userId}/role`, { role: newRole });
-      toast.success('Papel do usuário atualizado!');
-      loadUsers();
-      loadStats();
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Erro ao atualizar papel do usuário');
-    }
-  };
+  // Ações
+  const handleChangeRole   = async (uid, role) => { try { await api.put(`/admin/users/${uid}/role`, { role }); toast.success('Papel atualizado!'); loadUsers(); loadStats(); } catch (e) { toast.error(e.response?.data?.error || 'Erro'); } };
+  const handleToggleStatus = async (uid, cur)  => { const s = cur === 'active' ? 'inactive' : 'active'; try { await api.put(`/admin/users/${uid}/status`, { status: s }); toast.success(s === 'active' ? 'Usuário ativado!' : 'Usuário desativado!'); loadUsers(); loadStats(); } catch (e) { toast.error(e.response?.data?.error || 'Erro'); } };
+  const handleDelete       = async (uid, name) => { if (!confirm(`Deletar "${name}"?`)) return; try { await api.delete(`/admin/users/${uid}`); toast.success('Usuário deletado'); loadUsers(); loadStats(); } catch (e) { toast.error(e.response?.data?.error || 'Erro'); } };
+  const handleBulkDelete   = async ()          => { if (!selectedUsers.length) return; if (!confirm(`Deletar ${selectedUsers.length} usuário(s)?`)) return; try { await api.post('/admin/users/bulk-delete', { user_ids: selectedUsers }); toast.success(`${selectedUsers.length} deletado(s)`); setSelectedUsers([]); loadUsers(); loadStats(); } catch { toast.error('Erro ao deletar'); } };
+  const handleBulkRole     = async (role)      => { if (!selectedUsers.length) return; try { await api.post('/admin/users/bulk-role', { user_ids: selectedUsers, role }); toast.success('Papel alterado!'); setSelectedUsers([]); loadUsers(); loadStats(); } catch { toast.error('Erro ao alterar papel'); } };
+  const handleExport       = async ()          => { try { const res = await api.get('/admin/users/export', { params: filters, responseType: 'blob' }); const url = URL.createObjectURL(new Blob([res.data])); const a = document.createElement('a'); a.href = url; a.download = `usuarios_${new Date().toISOString().split('T')[0]}.csv`; a.click(); URL.revokeObjectURL(url); toast.success('Exportado!'); } catch { toast.error('Erro ao exportar'); } };
 
-  const handleToggleStatus = async (userId, currentStatus) => {
-    try {
-      const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-      await api.put(`/admin/users/${userId}/status`, { status: newStatus });
-      toast.success(`Usuário ${newStatus === 'active' ? 'ativado' : 'desativado'}!`);
-      loadUsers();
-      loadStats();
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Erro ao alterar status do usuário');
-    }
-  };
+  const toggleSelect    = (uid) => setSelectedUsers((p) => p.includes(uid) ? p.filter((i) => i !== uid) : [...p, uid]);
+  const toggleSelectAll = ()    => setSelectedUsers(selectedUsers.length === users.length ? [] : users.map((u) => u.id));
 
-  const handleDeleteUser = async (userId, username) => {
-    if (!confirm(`Tem certeza que deseja deletar o usuário "${username}"? Esta ação não pode ser desfeita.`)) {
-      return;
-    }
-
-    try {
-      await api.delete(`/admin/users/${userId}`);
-      toast.success('Usuário deletado com sucesso');
-      loadUsers();
-      loadStats();
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Erro ao deletar usuário');
-    }
-  };
-
-  const handleBulkDelete = async () => {
-    if (selectedUsers.length === 0) {
-      toast.error('Selecione pelo menos um usuário');
-      return;
-    }
-
-    if (!confirm(`Deletar ${selectedUsers.length} usuário(s) selecionado(s)? Esta ação não pode ser desfeita.`)) {
-      return;
-    }
-
-    try {
-      await api.post('/admin/users/bulk-delete', { user_ids: selectedUsers });
-      toast.success(`${selectedUsers.length} usuário(s) deletado(s)`);
-      setSelectedUsers([]);
-      loadUsers();
-      loadStats();
-    } catch (error) {
-      toast.error('Erro ao deletar usuários');
-    }
-  };
-
-  const handleBulkRoleChange = async (newRole) => {
-    if (selectedUsers.length === 0) {
-      toast.error('Selecione pelo menos um usuário');
-      return;
-    }
-
-    try {
-      await api.post('/admin/users/bulk-role', { user_ids: selectedUsers, role: newRole });
-      toast.success(`Papel alterado para ${selectedUsers.length} usuário(s)`);
-      setSelectedUsers([]);
-      loadUsers();
-      loadStats();
-    } catch (error) {
-      toast.error('Erro ao alterar papel dos usuários');
-    }
-  };
-
-  const handleResetPassword = async (userId, newPassword) => {
-    try {
-      await api.put(`/admin/users/${userId}/password`, { password: newPassword });
-      toast.success('Senha resetada com sucesso!');
-      setShowResetPasswordModal(false);
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Erro ao resetar senha');
-    }
-  };
-
-  const handleUpdateUser = async (userId, userData) => {
-    try {
-      await api.put(`/admin/users/${userId}`, userData);
-      toast.success('Usuário atualizado com sucesso!');
-      setShowEditModal(false);
-      loadUsers();
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Erro ao atualizar usuário');
-    }
-  };
-
-  const handleCreateUser = async (userData) => {
-    try {
-      await api.post('/admin/users', userData);
-      toast.success('Usuário criado com sucesso!');
-      setShowCreateModal(false);
-      loadUsers();
-      loadStats();
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Erro ao criar usuário');
-    }
-  };
-
-  const handleSendBulkEmail = async (emailData) => {
-    if (selectedUsers.length === 0) {
-      toast.error('Selecione pelo menos um usuário');
-      return;
-    }
-
-    try {
-      await api.post('/admin/users/bulk-email', {
-        user_ids: selectedUsers,
-        ...emailData
-      });
-      toast.success(`Email enviado para ${selectedUsers.length} usuário(s)`);
-      setShowBulkEmailModal(false);
-      setSelectedUsers([]);
-    } catch (error) {
-      toast.error('Erro ao enviar emails');
-    }
-  };
-
-  const handleExportUsers = async () => {
-    try {
-      const response = await api.get('/admin/users/export', {
-        params: filters,
-        responseType: 'blob'
-      });
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `usuarios_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-
-      toast.success('Usuários exportados com sucesso!');
-    } catch (error) {
-      toast.error('Erro ao exportar usuários');
-    }
-  };
-
-  const toggleSelectUser = (userId) => {
-    setSelectedUsers(prev =>
-      prev.includes(userId)
-        ? prev.filter(id => id !== userId)
-        : [...prev, userId]
-    );
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedUsers.length === users.length) {
-      setSelectedUsers([]);
-    } else {
-      setSelectedUsers(users.map(u => u.id));
-    }
-  };
-
-  const getRoleIcon = (role) => {
-    switch (role) {
-      case 'admin':
-        return <Crown className="w-4 h-4 text-yellow-600" />;
-      case 'uploader':
-        return <Shield className="w-4 h-4 text-blue-600" />;
-      default:
-        return <User className="w-4 h-4 text-gray-600" />;
-    }
-  };
-
-  const getStatusBadge = (status) => {
-    const isActive = status === 'active';
-    return (
-      <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full ${isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-        }`}>
-        {isActive ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-        {isActive ? 'Ativo' : 'Inativo'}
-      </span>
-    );
-  };
-
-  const clearFilters = () => {
-    setFilters({
-      role: '',
-      status: '',
-      dateFrom: '',
-      dateTo: ''
-    });
-  };
-
-  if (loading) {
-    return <Loading fullScreen />;
-  }
+  const clearFilters = () => setFilters({ role: '', status: '', dateFrom: '', dateTo: '' });
 
   return (
-    <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-4">
-        <Card className="p-4 col-span-1 md:col-span-2">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-100 rounded-lg">
-              <User className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Total de Usuários</p>
-              <p className="text-2xl font-bold text-gray-900">{formatNumber(stats.total || pagination.total)}</p>
-            </div>
-          </div>
-        </Card>
+    <div className="space-y-8">
 
-        <Card className="p-4 col-span-1 md:col-span-2">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-green-100 rounded-lg">
-              <CheckCircle className="w-6 h-6 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Ativos</p>
-              <p className="text-2xl font-bold text-gray-900">{formatNumber(stats.active || 0)}</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-4 col-span-1 md:col-span-2">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-yellow-100 rounded-lg">
-              <Crown className="w-6 h-6 text-yellow-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Admins</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.admins || 0}</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-4 col-span-1 md:col-span-2">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-purple-100 rounded-lg">
-              <TrendingUp className="w-6 h-6 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Novos (7 dias)</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.newThisWeek || 0}</p>
-            </div>
-          </div>
-        </Card>
+      {/* ── Stats ───────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: 'Total',          value: formatNumber(stats.total || pagination.total), color: 'text-blue-600 dark:text-blue-400',    bg: 'bg-blue-50 dark:bg-blue-900/20',    icon: Users        },
+          { label: 'Ativos',         value: formatNumber(stats.active || 0),              color: 'text-green-600 dark:text-green-400',  bg: 'bg-green-50 dark:bg-green-900/20',  icon: CheckCircle  },
+          { label: 'Admins',         value: stats.admins || 0,                            color: 'text-yellow-600 dark:text-yellow-400',bg: 'bg-yellow-50 dark:bg-yellow-900/20',icon: Crown        },
+          { label: 'Novos (7 dias)', value: stats.newThisWeek || 0,                       color: 'text-purple-600 dark:text-purple-400',bg: 'bg-purple-50 dark:bg-purple-900/20',icon: TrendingUp   },
+        ].map(({ label, value, color, bg, icon: Icon }) => (
+          <Card key={label} className="p-4 flex items-center gap-3">
+            <div className={`p-2.5 rounded-xl ${bg} flex-shrink-0`}><Icon className={`w-4 h-4 ${color}`} /></div>
+            <div><p className="text-xs text-gray-500 dark:text-gray-400">{label}</p><p className={`text-2xl font-black tabular-nums ${color}`}>{value}</p></div>
+          </Card>
+        ))}
       </div>
 
-      {/* Header */}
+      {/* ── Header ──────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Gerenciar Usuários</h1>
-          <p className="text-gray-600">
+          <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Usuários</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
             {pagination.total} usuário{pagination.total !== 1 ? 's' : ''} cadastrado{pagination.total !== 1 ? 's' : ''}
           </p>
         </div>
-        <div className="flex gap-3">
-          <Button
-            onClick={() => setShowStatsModal(true)}
-            variant="secondary"
-          >
-            <BarChart3 className="w-4 h-4 mr-2" />
-            Estatísticas
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <Filter className="w-4 h-4 mr-2" />
-            Filtros
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={handleExportUsers}
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Exportar
-          </Button>
-          <Button onClick={() => setShowCreateModal(true)}>
-            <UserPlus className="w-4 h-4 mr-2" />
-            Novo Usuário
+        <div className="flex gap-2">
+          <button onClick={() => setModal('stats')}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold border border-gray-200 dark:border-gray-700 rounded-xl text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+            <BarChart3 className="w-4 h-4" /> Estatísticas
+          </button>
+          <button onClick={() => setShowFilters((v) => !v)}
+            className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold border rounded-xl transition-all ${showFilters ? 'border-primary-400 dark:border-primary-600 text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+            <Filter className="w-4 h-4" /> Filtros
+          </button>
+          <button onClick={handleExport}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold border border-gray-200 dark:border-gray-700 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+            <Download className="w-4 h-4" /> Exportar
+          </button>
+          <Button size="sm" onClick={() => setModal('create')}>
+            <UserPlus className="w-3.5 h-3.5 mr-1.5" /> Novo Usuário
           </Button>
         </div>
       </div>
 
-      {/* Bulk Actions */}
+      {/* ── Ações em massa ──────────────────────────────────────── */}
       {selectedUsers.length > 0 && (
-        <Card className="p-4 bg-blue-50 border-blue-200">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-blue-900">
-              {selectedUsers.length} usuário(s) selecionado(s)
-            </p>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => setShowBulkEmailModal(true)}
-              >
-                <Mail className="w-4 h-4 mr-2" />
-                Enviar Email
-              </Button>
-              <select
-                onChange={(e) => {
-                  if (e.target.value) {
-                    handleBulkRoleChange(e.target.value);
-                    e.target.value = '';
-                  }
-                }}
-                className="text-sm border border-gray-300 rounded px-3 py-1"
-              >
-                <option value="">Alterar Papel</option>
-                <option value="reader">Leitor</option>
-                <option value="uploader">Uploader</option>
-                <option value="admin">Admin</option>
-              </select>
-              <Button
-                size="sm"
-                variant="danger"
-                onClick={handleBulkDelete}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Deletar
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => setSelectedUsers([])}
-              >
-                Cancelar
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* Filtros */}
-      {showFilters && (
-        <Card className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Papel
-              </label>
-              <select
-                value={filters.role}
-                onChange={(e) => setFilters({ ...filters, role: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="">Todos os papéis</option>
-                <option value="reader">Leitor</option>
-                <option value="uploader">Uploader</option>
-                <option value="admin">Administrador</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Status
-              </label>
-              <select
-                value={filters.status}
-                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="">Todos os status</option>
-                <option value="active">Ativo</option>
-                <option value="inactive">Inativo</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Data de
-              </label>
-              <input
-                type="date"
-                value={filters.dateFrom}
-                onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Data até
-              </label>
-              <input
-                type="date"
-                value={filters.dateTo}
-                onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
-          </div>
-          <div className="flex justify-end gap-3 mt-4">
-            <Button variant="secondary" onClick={clearFilters}>
-              Limpar Filtros
+        <div className="flex items-center justify-between p-4 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-2xl">
+          <span className="text-sm font-semibold text-primary-700 dark:text-primary-300">
+            {selectedUsers.length} usuário{selectedUsers.length !== 1 ? 's' : ''} selecionado{selectedUsers.length !== 1 ? 's' : ''}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="secondary" onClick={() => setModal('email')}>
+              <Mail className="w-3.5 h-3.5 mr-1.5" /> E-mail
             </Button>
+            <select onChange={(e) => { if (e.target.value) { handleBulkRole(e.target.value); e.target.value = ''; } }}
+              className="text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500/40">
+              <option value="">Alterar papel…</option>
+              <option value="reader">Leitor</option>
+              <option value="uploader">Uploader</option>
+              <option value="admin">Admin</option>
+            </select>
+            <button onClick={handleBulkDelete}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors">
+              <Trash2 className="w-3.5 h-3.5" /> Deletar
+            </button>
+            <button onClick={() => setSelectedUsers([])}
+              className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Filtros ──────────────────────────────────────────────── */}
+      {showFilters && (
+        <Card className="p-5">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            {[
+              { label: 'Papel', key: 'role', options: [['', 'Todos os papéis'], ['reader', 'Leitor'], ['uploader', 'Uploader'], ['admin', 'Admin']] },
+              { label: 'Status', key: 'status', options: [['', 'Todos'], ['active', 'Ativo'], ['inactive', 'Inativo']] },
+            ].map(({ label, key, options }) => (
+              <div key={key}>
+                <label className="block text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1.5">{label}</label>
+                <select value={filters[key]} onChange={(e) => setFilters((p) => ({ ...p, [key]: e.target.value }))} className={fieldCls}>
+                  {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </div>
+            ))}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1.5">Data de</label>
+              <input type="date" value={filters.dateFrom} onChange={(e) => setFilters((p) => ({ ...p, dateFrom: e.target.value }))} className={fieldCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1.5">Data até</label>
+              <input type="date" value={filters.dateTo} onChange={(e) => setFilters((p) => ({ ...p, dateTo: e.target.value }))} className={fieldCls} />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <button onClick={clearFilters} className="text-xs text-red-500 hover:text-red-600 font-semibold transition-colors">Limpar filtros</button>
           </div>
         </Card>
       )}
 
-      {/* Search */}
-      <Card className="p-4">
-        <SearchBar
-          value={search}
-          onChange={setSearch}
-          placeholder="Buscar usuários por nome, email..."
-        />
-      </Card>
+      {/* ── Busca ────────────────────────────────────────────────── */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar por nome ou email…"
+          className="w-full pl-9 pr-4 py-2 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/40 text-gray-900 dark:text-white placeholder-gray-400" />
+      </div>
 
-      {/* Users Table */}
-      {users.length === 0 ? (
-        <Card className="p-12 text-center">
-          <p className="text-gray-500 mb-4">Nenhum usuário encontrado</p>
-          <p className="text-sm text-gray-400">
-            {search || Object.values(filters).some(f => f)
-              ? 'Tente ajustar os termos da busca ou filtros'
-              : 'Os usuários serão listados aqui'
-            }
-          </p>
+      {/* ── Tabela ───────────────────────────────────────────────── */}
+      {loading ? <Loading /> : users.length === 0 ? (
+        <Card className="py-16 text-center text-gray-400 dark:text-gray-600">
+          <Users className="w-10 h-10 mx-auto mb-2 opacity-40" />
+          <p className="text-sm">Nenhum usuário encontrado</p>
         </Card>
       ) : (
         <>
-          <Card className="overflow-hidden">
+          <Card className="overflow-hidden p-0">
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="px-6 py-3 text-left">
-                      <input
-                        type="checkbox"
-                        checked={selectedUsers.length === users.length}
-                        onChange={toggleSelectAll}
-                        className="rounded"
-                      />
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800">
+                    <th className="px-4 py-3 text-left w-8">
+                      <input type="checkbox" checked={selectedUsers.length === users.length && users.length > 0}
+                        onChange={toggleSelectAll} className="rounded accent-primary-500" />
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Usuário
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Contato
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Papel
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Atividade
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                      Ações
-                    </th>
+                    {['Usuário', 'Contato', 'Papel', 'Status', 'Atividade', ''].map((h) => (
+                      <th key={h} className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 ${h === '' ? 'text-right' : ''}`}>{h}</th>
+                    ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {users.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <input
-                          type="checkbox"
-                          checked={selectedUsers.includes(user.id)}
-                          onChange={() => toggleSelectUser(user.id)}
-                          className="rounded"
-                        />
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-primary-600 rounded-full flex items-center justify-center text-white font-semibold overflow-hidden">
-                            {user.avatar_url ? (
-                              <img
-                                src={getImageUrl(user.avatar_url)}
-                                alt="Avatar"
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              user.username?.charAt(0).toUpperCase() || 'U'
-                            )}
+                <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                  {users.map((user) => {
+                    const rc = ROLE_CONFIG[user.role] ?? ROLE_CONFIG.reader;
+                    const isActive = (user.status || 'active') === 'active';
+                    return (
+                      <tr key={user.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors group">
+                        {/* Checkbox */}
+                        <td className="px-4 py-3">
+                          <input type="checkbox" checked={selectedUsers.includes(user.id)}
+                            onChange={() => toggleSelect(user.id)} className="rounded accent-primary-500" />
+                        </td>
+                        {/* Usuário */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center text-white font-bold text-xs overflow-hidden flex-shrink-0">
+                              {user.avatar_url ? <img src={getImageUrl(user.avatar_url)} alt="" className="w-full h-full object-cover" /> : user.username?.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-gray-900 dark:text-white">{user.username}</p>
+                              <p className="text-[10px] text-gray-400 dark:text-gray-500">ID {user.id}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium text-gray-900">
-                              {user.username}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              ID: {user.id}
-                            </p>
+                        </td>
+                        {/* Contato */}
+                        <td className="px-4 py-3">
+                          <p className="text-gray-700 dark:text-gray-300">{user.email}</p>
+                          {user.last_login && <p className="text-xs text-gray-400 dark:text-gray-500">Login: {formatDate(user.last_login)}</p>}
+                        </td>
+                        {/* Papel */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5">
+                            <rc.icon className={`w-3.5 h-3.5 ${rc.color}`} />
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${rc.bg} ${rc.color}`}>{rc.label}</span>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm">
-                          <p className="text-gray-900">{user.email}</p>
-                          {user.last_login && (
-                            <p className="text-gray-500 text-xs">
-                              Último login: {formatDate(user.last_login)}
-                            </p>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          {getRoleIcon(user.role)}
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${user.role === 'admin' ? 'bg-yellow-100 text-yellow-800' :
-                              user.role === 'uploader' ? 'bg-blue-100 text-blue-800' :
-                                'bg-gray-100 text-gray-800'
-                            }`}>
-                            {ROLE_LABELS[user.role]}
+                        </td>
+                        {/* Status */}
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg ${isActive ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'}`}>
+                            {isActive ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                            {isActive ? 'Ativo' : 'Inativo'}
                           </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        {getStatusBadge(user.status || 'active')}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3 text-xs text-gray-500">
-                          <span className="flex items-center gap-1">
-                            <Heart className="w-3 h-3" />
-                            {user.favorites_count || 0}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <MessageSquare className="w-3 h-3" />
-                            {user.comments_count || 0}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {user.reading_time || 0}h
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            onClick={() => {
-                              setSelectedUser(user);
-                              setShowDetailsModal(true);
-                            }}
-                            className="p-2 text-gray-600 hover:text-primary-600 transition"
-                            title="Ver detalhes"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              setSelectedUser(user);
-                              setShowEditModal(true);
-                            }}
-                            className="p-2 text-gray-600 hover:text-primary-600 transition"
-                            title="Editar usuário"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              setSelectedUser(user);
-                              setShowResetPasswordModal(true);
-                            }}
-                            className="p-2 text-gray-600 hover:text-orange-600 transition"
-                            title="Resetar senha"
-                          >
-                            <Lock className="w-4 h-4" />
-                          </button>
-
-                          <button
-                            onClick={() => handleToggleStatus(user.id, user.status || 'active')}
-                            className="p-2 text-gray-600 hover:text-purple-600 transition"
-                            title={user.status === 'active' ? 'Desativar usuário' : 'Ativar usuário'}
-                          >
-                            <Ban className="w-4 h-4" />
-                          </button>
-
-                          <select
-                            value={user.role}
-                            onChange={(e) => handleChangeRole(user.id, e.target.value)}
-                            className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                            title="Alterar papel"
-                          >
-                            <option value="reader">Leitor</option>
-                            <option value="uploader">Uploader</option>
-                            <option value="admin">Admin</option>
-                          </select>
-
-                          <button
-                            onClick={() => handleDeleteUser(user.id, user.username)}
-                            className="p-2 text-gray-600 hover:text-red-600 transition disabled:opacity-50"
-                            title="Deletar usuário"
-                            disabled={user.role === 'admin' && user.id === 1}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        {/* Atividade */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
+                            <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{user.favorites_count || 0}</span>
+                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{user.reading_time || 0}h</span>
+                          </div>
+                        </td>
+                        {/* Ações */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <ActionBtn icon={Eye}  title="Detalhes"    onClick={() => { setSelectedUser(user); setModal('details'); }} />
+                            <ActionBtn icon={Edit} title="Editar"      onClick={() => { setSelectedUser(user); setModal('edit');    }} />
+                            <ActionBtn icon={Lock} title="Resetar senha" onClick={() => { setSelectedUser(user); setModal('password'); }} />
+                            <ActionBtn icon={Ban}  title={isActive ? 'Desativar' : 'Ativar'} onClick={() => handleToggleStatus(user.id, user.status || 'active')} />
+                            <select value={user.role} onChange={(e) => handleChangeRole(user.id, e.target.value)}
+                              className="text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-primary-500/40">
+                              <option value="reader">Leitor</option>
+                              <option value="uploader">Uploader</option>
+                              <option value="admin">Admin</option>
+                            </select>
+                            <ActionBtn icon={Trash2} title="Deletar" danger disabled={user.role === 'admin' && user.id === 1}
+                              onClick={() => handleDelete(user.id, user.username)} />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </Card>
-
-          {/* Paginação */}
-          <Pagination
-            currentPage={pagination.page || page}
-            totalPages={pagination.pages}
-            onPageChange={goToPage}
-          />
+          <Pagination currentPage={pagination.page || page} totalPages={pagination.pages} onPageChange={goToPage} />
         </>
       )}
 
-      {/* Modals */}
-      {showCreateModal && (
-        <CreateUserModal
-          onClose={() => setShowCreateModal(false)}
-          onCreate={handleCreateUser}
-        />
-      )}
-
-      {showEditModal && selectedUser && (
-        <EditUserModal
-          user={selectedUser}
-          onClose={() => {
-            setShowEditModal(false);
-            setSelectedUser(null);
-          }}
-          onSave={handleUpdateUser}
-        />
-      )}
-
-      {showDetailsModal && selectedUser && (
-        <UserDetailsModal
-          user={selectedUser}
-          onClose={() => {
-            setShowDetailsModal(false);
-            setSelectedUser(null);
-          }}
-        />
-      )}
-
-      {showResetPasswordModal && selectedUser && (
-        <ResetPasswordModal
-          user={selectedUser}
-          onClose={() => {
-            setShowResetPasswordModal(false);
-            setSelectedUser(null);
-          }}
-          onReset={handleResetPassword}
-        />
-      )}
-
-      {showBulkEmailModal && (
-        <BulkEmailModal
-          userCount={selectedUsers.length}
-          onClose={() => setShowBulkEmailModal(false)}
-          onSend={handleSendBulkEmail}
-        />
-      )}
-
-      {showStatsModal && (
-        <StatsModal
-          stats={stats}
-          onClose={() => setShowStatsModal(false)}
-        />
-      )}
-
-      {/* Role Descriptions */}
-      <Card className="p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">
-          Descrição dos Papéis
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 border-2 border-gray-200 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <Crown className="w-5 h-5 text-yellow-600" />
-              <h3 className="font-semibold text-gray-900">Administrador</h3>
-            </div>
-            <p className="text-sm text-gray-600">
-              Acesso completo ao sistema. Pode gerenciar usuários, conteúdo e configurações.
-            </p>
-          </div>
-          <div className="p-4 border-2 border-gray-200 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <Shield className="w-5 h-5 text-blue-600" />
-              <h3 className="font-semibold text-gray-900">Uploader</h3>
-            </div>
-            <p className="text-sm text-gray-600">
-              Pode criar, editar e gerenciar mangás, novels e capítulos.
-            </p>
-          </div>
-          <div className="p-4 border-2 border-gray-200 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <User className="w-5 h-5 text-gray-600" />
-              <h3 className="font-semibold text-gray-900">Leitor</h3>
-            </div>
-            <p className="text-sm text-gray-600">
-              Pode ler conteúdo, adicionar favoritos e manter histórico de leitura.
-            </p>
-          </div>
+      {/* ── Descrição dos papéis ────────────────────────────────── */}
+      <Card className="p-5">
+        <h2 className="text-base font-black text-gray-900 dark:text-white mb-4">Papéis do Sistema</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {[
+            { key: 'admin',    desc: 'Acesso completo. Gerencia usuários, conteúdo e configurações.'          },
+            { key: 'uploader', desc: 'Pode criar, editar e gerenciar mangás, novels e capítulos.'             },
+            { key: 'reader',   desc: 'Pode ler conteúdo, adicionar favoritos e manter histórico de leitura.'  },
+          ].map(({ key, desc }) => {
+            const rc = ROLE_CONFIG[key];
+            return (
+              <div key={key} className={`flex gap-3 p-4 rounded-xl border ${rc.bg} border-current/10`}>
+                <div className={`p-2 rounded-lg ${rc.bg} flex-shrink-0`}><rc.icon className={`w-4 h-4 ${rc.color}`} /></div>
+                <div>
+                  <p className={`font-bold text-sm ${rc.color}`}>{rc.label}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 leading-relaxed">{desc}</p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </Card>
+
+      {/* ── Modais ───────────────────────────────────────────────── */}
+      {modal === 'create'   && <CreateUserModal   onClose={() => setModal(null)} onCreate={async (d) => { try { await api.post('/admin/users', d); toast.success('Usuário criado!'); setModal(null); loadUsers(); loadStats(); } catch (e) { toast.error(e.response?.data?.error || 'Erro'); } }} />}
+      {modal === 'edit'     && selectedUser && <EditUserModal user={selectedUser} onClose={() => { setModal(null); setSelectedUser(null); }} onSave={async (uid, d) => { try { await api.put(`/admin/users/${uid}`, d); toast.success('Atualizado!'); setModal(null); loadUsers(); } catch (e) { toast.error(e.response?.data?.error || 'Erro'); } }} />}
+      {modal === 'details'  && selectedUser && <UserDetailsModal user={selectedUser} onClose={() => { setModal(null); setSelectedUser(null); }} />}
+      {modal === 'password' && selectedUser && <ResetPasswordModal user={selectedUser} onClose={() => { setModal(null); setSelectedUser(null); }} onReset={async (uid, pwd) => { try { await api.put(`/admin/users/${uid}/password`, { password: pwd }); toast.success('Senha resetada!'); setModal(null); } catch (e) { toast.error(e.response?.data?.error || 'Erro'); } }} />}
+      {modal === 'email'    && <BulkEmailModal userCount={selectedUsers.length} onClose={() => setModal(null)} onSend={async (data) => { try { await api.post('/admin/users/bulk-email', { user_ids: selectedUsers, ...data }); toast.success('E-mail enviado!'); setModal(null); setSelectedUsers([]); } catch { toast.error('Erro ao enviar'); } }} />}
+      {modal === 'stats'    && <StatsModal stats={stats} onClose={() => setModal(null)} />}
     </div>
   );
 };
 
-// Modal de Criação de Usuário
+/* ── ActionBtn ────────────────────────────────────────────────────── */
+
+const ActionBtn = ({ icon: Icon, title, onClick, danger, disabled }) => (
+  <button title={title} onClick={onClick} disabled={disabled}
+    className={`p-1.5 rounded-lg transition-colors disabled:opacity-30 ${danger ? 'text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20' : 'text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20'}`}>
+    <Icon className="w-4 h-4" />
+  </button>
+);
+
+/* ── Modais ───────────────────────────────────────────────────────── */
+
 const CreateUserModal = ({ onClose, onCreate }) => {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    password: '',
-    role: 'reader',
-    status: 'active',
-    sendWelcomeEmail: true
-  });
+  const [form, setForm] = useState({ username: '', email: '', password: '', role: 'reader', status: 'active', sendWelcomeEmail: true });
+  const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
-  const generatePassword = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-    let newPassword = '';
-    for (let i = 0; i < 12; i++) {
-      newPassword += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setFormData({ ...formData, password: newPassword });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    await onCreate(formData);
-    setLoading(false);
-  };
+  const handleSubmit = async (e) => { e.preventDefault(); setLoading(true); await onCreate(form); setLoading(false); };
 
   return (
-    <Modal
-      isOpen={true}
-      onClose={onClose}
-      title="Criar Novo Usuário"
-      size="md"
-    >
+    <Modal isOpen onClose={onClose} title="Novo Usuário" size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          label="Nome de usuário *"
-          value={formData.username}
-          onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-          placeholder="usuario123"
-          required
-        />
-        
-        <Input
-          label="Email *"
-          type="email"
-          value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          placeholder="usuario@email.com"
-          required
-        />
-        
+        <Input label="Nome de usuário *" value={form.username} onChange={(e) => set('username', e.target.value)} placeholder="usuario123" required />
+        <Input label="Email *" type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="email@exemplo.com" required />
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Senha *
-          </label>
+          <label className="block text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1.5">Senha *</label>
           <div className="flex gap-2">
-            <Input
-              type="text"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              placeholder="Senha do usuário"
-              required
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={generatePassword}
-            >
+            <input type="text" value={form.password} onChange={(e) => set('password', e.target.value)} placeholder="Senha do usuário" required className={fieldCls + ' flex-1'} />
+            <button type="button" onClick={() => set('password', genPassword())}
+              className="px-3 py-2 text-xs font-semibold border border-gray-200 dark:border-gray-700 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors whitespace-nowrap">
               Gerar
-            </Button>
+            </button>
           </div>
-          <p className="text-xs text-gray-500 mt-1">
-            Mínimo 6 caracteres
-          </p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Mínimo 6 caracteres</p>
         </div>
-        
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Papel *
-            </label>
-            <select
-              value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="reader">Leitor</option>
-              <option value="uploader">Uploader</option>
-              <option value="admin">Administrador</option>
+            <label className="block text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1.5">Papel</label>
+            <select value={form.role} onChange={(e) => set('role', e.target.value)} className={fieldCls}>
+              <option value="reader">Leitor</option><option value="uploader">Uploader</option><option value="admin">Admin</option>
             </select>
           </div>
-          
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Status *
-            </label>
-            <select
-              value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="active">Ativo</option>
-              <option value="inactive">Inativo</option>
+            <label className="block text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1.5">Status</label>
+            <select value={form.status} onChange={(e) => set('status', e.target.value)} className={fieldCls}>
+              <option value="active">Ativo</option><option value="inactive">Inativo</option>
             </select>
           </div>
         </div>
-
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="sendWelcomeEmail"
-            checked={formData.sendWelcomeEmail}
-            onChange={(e) => setFormData({ ...formData, sendWelcomeEmail: e.target.checked })}
-            className="rounded"
-          />
-          <label htmlFor="sendWelcomeEmail" className="text-sm text-gray-700">
-            Enviar email de boas-vindas com credenciais
-          </label>
-        </div>
-
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" loading={loading}>
-            Criar Usuário
-          </Button>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" checked={form.sendWelcomeEmail} onChange={(e) => set('sendWelcomeEmail', e.target.checked)} className="rounded accent-primary-500" />
+          <span className="text-xs text-gray-600 dark:text-gray-400">Enviar e-mail de boas-vindas</span>
+        </label>
+        <div className="flex justify-end gap-3 pt-2">
+          <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
+          <Button type="submit" loading={loading}>Criar Usuário</Button>
         </div>
       </form>
     </Modal>
   );
 };
 
-// Modal de Edição de Usuário
 const EditUserModal = ({ user, onClose, onSave }) => {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    username: user.username || '',
-    email: user.email || '',
-    role: user.role || 'reader',
-    status: user.status || 'active'
-  });
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    await onSave(user.id, formData);
-    setLoading(false);
-  };
-
+  const [form, setForm] = useState({ username: user.username || '', email: user.email || '', role: user.role || 'reader', status: user.status || 'active' });
+  const handleSubmit = async (e) => { e.preventDefault(); setLoading(true); await onSave(user.id, form); setLoading(false); };
   return (
-    <Modal
-      isOpen={true}
-      onClose={onClose}
-      title="Editar Usuário"
-      size="md"
-    >
+    <Modal isOpen onClose={onClose} title="Editar Usuário" size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          label="Nome de usuário"
-          value={formData.username}
-          onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-          required
-        />
-        
-        <Input
-          label="Email"
-          type="email"
-          value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          required
-        />
-        
+        <Input label="Nome de usuário" value={form.username} onChange={(e) => setForm((p) => ({ ...p, username: e.target.value }))} required />
+        <Input label="Email" type="email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} required />
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Papel
-            </label>
-            <select
-              value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="reader">Leitor</option>
-              <option value="uploader">Uploader</option>
-              <option value="admin">Administrador</option>
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Status
-            </label>
-            <select
-              value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="active">Ativo</option>
-              <option value="inactive">Inativo</option>
-            </select>
-          </div>
+          {[
+            { label: 'Papel', key: 'role', options: [['reader', 'Leitor'], ['uploader', 'Uploader'], ['admin', 'Admin']] },
+            { label: 'Status', key: 'status', options: [['active', 'Ativo'], ['inactive', 'Inativo']] },
+          ].map(({ label, key, options }) => (
+            <div key={key}>
+              <label className="block text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1.5">{label}</label>
+              <select value={form[key]} onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))} className={fieldCls}>
+                {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
+            </div>
+          ))}
         </div>
-
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" loading={loading}>
-            Salvar Alterações
-          </Button>
+        <div className="flex justify-end gap-3 pt-2">
+          <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
+          <Button type="submit" loading={loading}>Salvar</Button>
         </div>
       </form>
     </Modal>
   );
 };
 
-// Modal de Detalhes do Usuário - VERSÃO MELHORADA
 const UserDetailsModal = ({ user, onClose }) => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('info');
-
-  useEffect(() => {
-    loadUserStats();
-  }, [user.id]);
-
-  const loadUserStats = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get(`/admin/users/${user.id}/stats`);
-      setStats(response.data.stats);
-    } catch (error) {
-      console.error('Erro ao carregar estatísticas:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  const [tab, setTab] = useState('info');
+  useEffect(() => { api.get(`/admin/users/${user.id}/stats`).then((r) => setStats(r.data.stats)).catch(() => {}).finally(() => setLoading(false)); }, [user.id]);
+  const rc = ROLE_CONFIG[user.role] ?? ROLE_CONFIG.reader;
+  const isActive = (user.status || 'active') === 'active';
   return (
-    <Modal
-      isOpen={true}
-      onClose={onClose}
-      title="Detalhes do Usuário"
-      size="xl"
-    >
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-4 pb-4 border-b">
-          <div className="w-16 h-16 bg-primary-600 rounded-full flex items-center justify-center text-white font-semibold text-xl overflow-hidden">
-            {user.avatar_url ? (
-              <img
-                src={getImageUrl(user.avatar_url)}
-                alt="Avatar"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              user.username?.charAt(0).toUpperCase()
-            )}
+    <Modal isOpen onClose={onClose} title="Detalhes do Usuário" size="xl">
+      <div className="space-y-5">
+        <div className="flex items-center gap-4 pb-5 border-b border-gray-100 dark:border-gray-800">
+          <div className="w-16 h-16 bg-primary-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl overflow-hidden">
+            {user.avatar_url ? <img src={getImageUrl(user.avatar_url)} alt="" className="w-full h-full object-cover" /> : user.username?.charAt(0).toUpperCase()}
           </div>
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold text-gray-900">{user.username}</h3>
-            <p className="text-gray-600">{user.email}</p>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
-                {ROLE_LABELS[user.role]}
-              </span>
-              <span className={`text-xs px-2 py-1 rounded-full ${
-                user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-              }`}>
-                {user.status === 'active' ? 'Ativo' : 'Inativo'}
-              </span>
-              <span className="text-xs text-gray-500">ID: {user.id}</span>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-lg font-black text-gray-900 dark:text-white">{user.username}</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
+            <div className="flex items-center gap-2 mt-1.5">
+              <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-lg ${rc.bg} ${rc.color}`}><rc.icon className="w-3 h-3" />{rc.label}</span>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${isActive ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'}`}>{isActive ? 'Ativo' : 'Inativo'}</span>
+              <span className="text-xs text-gray-400">ID {user.id}</span>
             </div>
           </div>
         </div>
-
-        {/* Tabs */}
-        <div className="flex gap-4 border-b">
-          <button
-            onClick={() => setActiveTab('info')}
-            className={`pb-2 px-1 font-medium transition ${
-              activeTab === 'info'
-                ? 'border-b-2 border-primary-600 text-primary-600'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Informações
-          </button>
-          <button
-            onClick={() => setActiveTab('activity')}
-            className={`pb-2 px-1 font-medium transition ${
-              activeTab === 'activity'
-                ? 'border-b-2 border-primary-600 text-primary-600'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Atividade
-          </button>
-          <button
-            onClick={() => setActiveTab('content')}
-            className={`pb-2 px-1 font-medium transition ${
-              activeTab === 'content'
-                ? 'border-b-2 border-primary-600 text-primary-600'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Conteúdo
-          </button>
+        <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl w-fit">
+          {['info', 'activity', 'content'].map((t) => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all capitalize ${tab === t ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
+              {t === 'info' ? 'Informações' : t === 'activity' ? 'Atividade' : 'Conteúdo'}
+            </button>
+          ))}
         </div>
-
-        {/* Content */}
-        {activeTab === 'info' && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">Papel</p>
-                <p className="font-semibold text-gray-900">{ROLE_LABELS[user.role]}</p>
+        {tab === 'info' && (
+          <div className="grid grid-cols-2 gap-3">
+            {[['Papel', rc.label], ['Status', isActive ? 'Ativo' : 'Inativo'], ['Cadastrado em', formatDate(user.created_at)], ['Último login', user.last_login ? formatDateTime(user.last_login) : 'Nunca']].map(([l, v]) => (
+              <div key={l} className="p-4 bg-gray-50 dark:bg-gray-800/60 rounded-xl">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">{l}</p>
+                <p className="font-bold text-gray-900 dark:text-white text-sm">{v}</p>
               </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">Status</p>
-                <p className={`font-semibold ${user.status === 'active' ? 'text-green-600' : 'text-red-600'}`}>
-                  {user.status === 'active' ? 'Ativo' : 'Inativo'}
-                </p>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">Cadastrado em</p>
-                <p className="font-semibold text-gray-900">{formatDate(user.created_at)}</p>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">Último login</p>
-                <p className="font-semibold text-gray-900">
-                  {user.last_login ? formatDateTime(user.last_login) : 'Nunca logou'}
-                </p>
-              </div>
+            ))}
+          </div>
+        )}
+        {tab === 'activity' && (
+          loading ? <Loading /> : (
+            <div className="grid grid-cols-3 gap-3">
+              {[['Favoritos', stats?.favorites_count || 0, 'text-purple-600 dark:text-purple-400', 'bg-purple-50 dark:bg-purple-900/20', Heart], ['Comentários', stats?.comments_count || 0, 'text-green-600 dark:text-green-400', 'bg-green-50 dark:bg-green-900/20', MessageSquare], ['Tempo leitura', `${stats?.reading_time || 0}h`, 'text-orange-600 dark:text-orange-400', 'bg-orange-50 dark:bg-orange-900/20', Clock]].map(([l, v, color, bg, Icon]) => (
+                <div key={l} className={`p-4 rounded-xl ${bg} text-center`}>
+                  <Icon className={`w-6 h-6 mx-auto mb-1.5 ${color}`} />
+                  <p className={`text-2xl font-black ${color}`}>{v}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">{l}</p>
+                </div>
+              ))}
             </div>
-
-            {user.created_by && (
-              <div className="p-4 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-600 mb-1">Criado por</p>
-                <p className="font-semibold text-blue-900">{user.created_by}</p>
-              </div>
-            )}
-          </div>
+          )
         )}
-
-        {activeTab === 'activity' && (
-          <div className="space-y-4">
-            {loading ? (
-              <Loading />
-            ) : (
-              <>
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div className="p-4 bg-purple-50 rounded-lg">
-                    <Heart className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-                    <p className="text-2xl font-bold text-purple-600">{stats?.favorites_count || 0}</p>
-                    <p className="text-sm text-gray-600">Favoritos</p>
-                  </div>
-                  <div className="p-4 bg-green-50 rounded-lg">
-                    <MessageSquare className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                    <p className="text-2xl font-bold text-green-600">{stats?.comments_count || 0}</p>
-                    <p className="text-sm text-gray-600">Comentários</p>
-                  </div>
-                  <div className="p-4 bg-orange-50 rounded-lg">
-                    <Clock className="w-8 h-8 text-orange-600 mx-auto mb-2" />
-                    <p className="text-2xl font-bold text-orange-600">{stats?.reading_time || 0}h</p>
-                    <p className="text-sm text-gray-600">Tempo de leitura</p>
-                  </div>
+        {tab === 'content' && (
+          loading ? <Loading /> : (
+            <div className="space-y-4">
+              {user.role !== 'reader' && (
+                <div className="grid grid-cols-2 gap-3">
+                  {[['Mangás', stats?.mangas_uploaded || 0, 'text-blue-600 dark:text-blue-400', 'bg-blue-50 dark:bg-blue-900/20', BookOpen], ['Novels', stats?.novels_uploaded || 0, 'text-green-600 dark:text-green-400', 'bg-green-50 dark:bg-green-900/20', FileText]].map(([l, v, color, bg, Icon]) => (
+                    <div key={l} className={`p-4 rounded-xl ${bg} flex items-center gap-3`}>
+                      <Icon className={`w-5 h-5 ${color}`} />
+                      <div><p className={`text-2xl font-black ${color}`}>{v}</p><p className="text-xs text-gray-600 dark:text-gray-400">{l} enviado{v !== 1 ? 's' : ''}</p></div>
+                    </div>
+                  ))}
                 </div>
-
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <h4 className="font-semibold text-gray-900 mb-3">Atividade Recente</h4>
-                  {stats?.recent_activity && stats.recent_activity.length > 0 ? (
-                    <div className="space-y-2">
-                      {stats.recent_activity.map((activity, index) => (
-                        <div key={index} className="flex items-center gap-3 text-sm">
-                          <Activity className="w-4 h-4 text-gray-400" />
-                          <span className="text-gray-600">{activity.description}</span>
-                          <span className="text-gray-400 text-xs ml-auto">{formatDate(activity.created_at)}</span>
+              )}
+              {stats?.favorites?.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-2">Favoritos recentes</p>
+                  <div className="space-y-2">
+                    {stats.favorites.slice(0, 5).map((fav, i) => (
+                      <div key={i} className="flex items-center gap-3 p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/60">
+                        <div className="w-8 h-12 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden flex-shrink-0">
+                          {fav.cover_image && <img src={fav.cover_image} alt="" className="w-full h-full object-cover" />}
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500">Nenhuma atividade recente</p>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'content' && (
-          <div className="space-y-4">
-            {loading ? (
-              <Loading />
-            ) : (
-              <>
-                {user.role !== 'reader' && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-blue-50 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <BookOpen className="w-5 h-5 text-blue-600" />
-                        <h4 className="font-semibold text-blue-900">Mangás Enviados</h4>
+                        <div className="min-w-0"><p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{fav.title}</p><p className="text-xs text-gray-400">{fav.type}</p></div>
                       </div>
-                      <p className="text-2xl font-bold text-blue-600">{stats?.mangas_uploaded || 0}</p>
-                    </div>
-                    <div className="p-4 bg-green-50 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <FileText className="w-5 h-5 text-green-600" />
-                        <h4 className="font-semibold text-green-900">Novels Enviadas</h4>
-                      </div>
-                      <p className="text-2xl font-bold text-green-600">{stats?.novels_uploaded || 0}</p>
-                    </div>
+                    ))}
                   </div>
-                )}
-
-                <div className="border-t pt-4">
-                  <h4 className="font-semibold text-gray-900 mb-3">Favoritos</h4>
-                  {stats?.favorites && stats.favorites.length > 0 ? (
-                    <div className="space-y-2">
-                      {stats.favorites.slice(0, 5).map((fav, index) => (
-                        <div key={index} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded">
-                          <div className="w-10 h-14 bg-gray-200 rounded overflow-hidden flex-shrink-0">
-                            {fav.cover_image && (
-                              <img src={fav.cover_image} alt={fav.title} className="w-full h-full object-cover" />
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm text-gray-900 truncate">{fav.title}</p>
-                            <p className="text-xs text-gray-500">{fav.type}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500">Nenhum favorito</p>
-                  )}
                 </div>
-              </>
-            )}
-          </div>
+              )}
+            </div>
+          )
         )}
       </div>
     </Modal>
   );
 };
 
-// Modal de Reset de Senha
 const ResetPasswordModal = ({ user, onClose, onReset }) => {
   const [loading, setLoading] = useState(false);
   const [password, setPassword] = useState('');
   const [sendEmail, setSendEmail] = useState(true);
-
-  const generatePassword = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-    let newPassword = '';
-    for (let i = 0; i < 12; i++) {
-      newPassword += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setPassword(newPassword);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!password || password.length < 6) {
-      toast.error('A senha deve ter no mínimo 6 caracteres');
-      return;
-    }
-    
-    setLoading(true);
-    await onReset(user.id, password, sendEmail);
-    setLoading(false);
-  };
-
-  const copyPassword = () => {
-    navigator.clipboard.writeText(password);
-    toast.success('Senha copiada!');
-  };
-
+  const handleSubmit = async (e) => { e.preventDefault(); if (password.length < 6) { toast.error('Mínimo 6 caracteres'); return; } setLoading(true); await onReset(user.id, password, sendEmail); setLoading(false); };
   return (
-    <Modal
-      isOpen={true}
-      onClose={onClose}
-      title="Resetar Senha"
-      size="md"
-    >
+    <Modal isOpen onClose={onClose} title="Resetar Senha" size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-sm text-yellow-800">
-            ⚠️ A senha será alterada imediatamente após confirmar.
-          </p>
+        <div className="p-3.5 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl text-xs text-yellow-800 dark:text-yellow-200">
+          ⚠️ A senha será alterada imediatamente para <strong>{user.username}</strong>.
         </div>
-
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Nova senha para <strong>{user.username}</strong>
-          </label>
+          <label className="block text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1.5">Nova senha</label>
           <div className="flex gap-2">
-            <Input
-              type="text"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Digite ou gere uma senha"
-              required
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={generatePassword}
-            >
-              Gerar
-            </Button>
-            {password && (
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={copyPassword}
-                title="Copiar senha"
-              >
-                <Copy className="w-4 h-4" />
-              </Button>
-            )}
+            <input type="text" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Digite ou gere uma senha" required className={fieldCls + ' flex-1'} />
+            <button type="button" onClick={() => setPassword(genPassword())}
+              className="px-3 py-2 text-xs font-semibold border border-gray-200 dark:border-gray-700 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors whitespace-nowrap">Gerar</button>
+            {password && <button type="button" onClick={() => { navigator.clipboard.writeText(password); toast.success('Copiada!'); }}
+              className="p-2 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"><Copy className="w-4 h-4" /></button>}
           </div>
-          <p className="text-xs text-gray-500 mt-1">
-            Mínimo 6 caracteres. Recomendado: 12+ caracteres com letras, números e símbolos.
-          </p>
         </div>
-
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="sendEmail"
-            checked={sendEmail}
-            onChange={(e) => setSendEmail(e.target.checked)}
-            className="rounded"
-          />
-          <label htmlFor="sendEmail" className="text-sm text-gray-700">
-            Enviar email com a nova senha para o usuário
-          </label>
-        </div>
-
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" loading={loading} variant="danger">
-            Resetar Senha
-          </Button>
+        <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={sendEmail} onChange={(e) => setSendEmail(e.target.checked)} className="rounded accent-primary-500" /><span className="text-xs text-gray-600 dark:text-gray-400">Enviar nova senha por e-mail</span></label>
+        <div className="flex justify-end gap-3 pt-2">
+          <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
+          <Button type="submit" loading={loading} variant="danger">Resetar Senha</Button>
         </div>
       </form>
     </Modal>
   );
 };
 
-// Modal de Email em Massa
 const BulkEmailModal = ({ userCount, onClose, onSend }) => {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    subject: '',
-    message: '',
-    includeUnsubscribeLink: true
-  });
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    await onSend(formData);
-    setLoading(false);
-  };
-
+  const [form, setForm] = useState({ subject: '', message: '', includeUnsubscribeLink: true });
+  const handleSubmit = async (e) => { e.preventDefault(); setLoading(true); await onSend(form); setLoading(false); };
   return (
-    <Modal
-      isOpen={true}
-      onClose={onClose}
-      title={`Enviar Email para ${userCount} Usuário(s)`}
-      size="lg"
-    >
+    <Modal isOpen onClose={onClose} title={`E-mail para ${userCount} usuário(s)`} size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          label="Assunto *"
-          value={formData.subject}
-          onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-          placeholder="Ex: Novidades da plataforma"
-          required
-        />
-
+        <Input label="Assunto *" value={form.subject} onChange={(e) => setForm((p) => ({ ...p, subject: e.target.value }))} placeholder="Ex: Novidades da plataforma" required />
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Mensagem *
-          </label>
-          <textarea
-            value={formData.message}
-            onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-            rows={8}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-            placeholder="Escreva a mensagem do email..."
-            required
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            Você pode usar {'{username}'} para personalizar com o nome do usuário
-          </p>
+          <label className="block text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1.5">Mensagem *</label>
+          <textarea value={form.message} onChange={(e) => setForm((p) => ({ ...p, message: e.target.value }))} rows={6}
+            className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/40 resize-none"
+            placeholder="Conteúdo do e-mail…" required />
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Use {'{username}'} para personalizar.</p>
         </div>
-
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="includeUnsubscribe"
-            checked={formData.includeUnsubscribeLink}
-            onChange={(e) => setFormData({ ...formData, includeUnsubscribeLink: e.target.checked })}
-            className="rounded"
-          />
-          <label htmlFor="includeUnsubscribe" className="text-sm text-gray-700">
-            Incluir link para cancelar inscrição
-          </label>
+        <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={form.includeUnsubscribeLink} onChange={(e) => setForm((p) => ({ ...p, includeUnsubscribeLink: e.target.checked }))} className="rounded accent-primary-500" /><span className="text-xs text-gray-600 dark:text-gray-400">Incluir link de cancelamento</span></label>
+        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl text-xs text-blue-700 dark:text-blue-300">
+          📧 Será enviado para {userCount} usuário(s) selecionado(s).
         </div>
-
-        <div className="p-4 bg-blue-50 rounded-lg">
-          <p className="text-sm text-blue-800">
-            📧 Este email será enviado para {userCount} usuário(s) selecionado(s).
-          </p>
-        </div>
-
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" loading={loading}>
-            <Send className="w-4 h-4 mr-2" />
-            Enviar Email
-          </Button>
+        <div className="flex justify-end gap-3 pt-2">
+          <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
+          <Button type="submit" loading={loading}><Send className="w-3.5 h-3.5 mr-1.5" />Enviar</Button>
         </div>
       </form>
     </Modal>
   );
 };
 
-// Modal de Estatísticas
-const StatsModal = ({ stats, onClose }) => {
-  return (
-    <Modal
-      isOpen={true}
-      onClose={onClose}
-      title="Estatísticas de Usuários"
-      size="xl"
-    >
-      <div className="space-y-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <User className="w-8 h-8 text-blue-600" />
-              <div>
-                <p className="text-sm text-gray-600">Total</p>
-                <p className="text-2xl font-bold">{formatNumber(stats.total || 0)}</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <CheckCircle className="w-8 h-8 text-green-600" />
-              <div>
-                <p className="text-sm text-gray-600">Ativos</p>
-                <p className="text-2xl font-bold">{formatNumber(stats.active || 0)}</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <XCircle className="w-8 h-8 text-red-600" />
-              <div>
-                <p className="text-sm text-gray-600">Inativos</p>
-                <p className="text-2xl font-bold">{formatNumber(stats.inactive || 0)}</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <TrendingUp className="w-8 h-8 text-purple-600" />
-              <div>
-                <p className="text-sm text-gray-600">Novos (hoje)</p>
-                <p className="text-2xl font-bold">{stats.newToday || 0}</p>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-3 gap-4">
-          <Card className="p-4">
-            <div className="flex items-center justify-between mb-2">
-              <Crown className="w-6 h-6 text-yellow-600" />
-              <span className="text-2xl font-bold">{stats.admins || 0}</span>
-            </div>
-            <p className="text-sm text-gray-600">Administradores</p>
-            <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-yellow-600"
-                style={{ width: `${(stats.admins / stats.total) * 100}%` }}
-              />
-            </div>
-          </Card>
-
-          <Card className="p-4">
-            <div className="flex items-center justify-between mb-2">
-              <Shield className="w-6 h-6 text-blue-600" />
-              <span className="text-2xl font-bold">{stats.uploaders || 0}</span>
-            </div>
-            <p className="text-sm text-gray-600">Uploaders</p>
-            <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-blue-600"
-                style={{ width: `${(stats.uploaders / stats.total) * 100}%` }}
-              />
-            </div>
-          </Card>
-
-          <Card className="p-4">
-            <div className="flex items-center justify-between mb-2">
-              <User className="w-6 h-6 text-gray-600" />
-              <span className="text-2xl font-bold">{stats.readers || 0}</span>
-            </div>
-            <p className="text-sm text-gray-600">Leitores</p>
-            <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gray-600"
-                style={{ width: `${(stats.readers / stats.total) * 100}%` }}
-              />
-            </div>
-          </Card>
-        </div>
-
-        <Card className="p-4">
-          <h3 className="font-semibold text-gray-900 mb-3">Crescimento Semanal</h3>
-          <p className="text-sm text-gray-600">
-            Novos usuários esta semana: <strong className="text-primary-600">{stats.newThisWeek || 0}</strong>
-          </p>
-          <p className="text-sm text-gray-600 mt-1">
-            Novos usuários hoje: <strong className="text-primary-600">{stats.newToday || 0}</strong>
-          </p>
-        </Card>
+const StatsModal = ({ stats, onClose }) => (
+  <Modal isOpen onClose={onClose} title="Estatísticas de Usuários" size="xl">
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[['Total', stats.total || 0, 'text-blue-600 dark:text-blue-400', 'bg-blue-50 dark:bg-blue-900/20', User], ['Ativos', stats.active || 0, 'text-green-600 dark:text-green-400', 'bg-green-50 dark:bg-green-900/20', CheckCircle], ['Inativos', stats.inactive || 0, 'text-red-600 dark:text-red-400', 'bg-red-50 dark:bg-red-900/20', XCircle], ['Novos hoje', stats.newToday || 0, 'text-purple-600 dark:text-purple-400', 'bg-purple-50 dark:bg-purple-900/20', TrendingUp]].map(([l, v, color, bg, Icon]) => (
+          <div key={l} className={`p-4 rounded-xl ${bg} flex items-center gap-3`}>
+            <Icon className={`w-5 h-5 ${color} flex-shrink-0`} />
+            <div><p className={`text-2xl font-black ${color} tabular-nums`}>{formatNumber(v)}</p><p className="text-xs text-gray-600 dark:text-gray-400">{l}</p></div>
+          </div>
+        ))}
       </div>
-    </Modal>
-  );
-};
+      <div className="grid grid-cols-3 gap-3">
+        {[['Admins', stats.admins || 0, 'bg-yellow-500', ROLE_CONFIG.admin], ['Uploaders', stats.uploaders || 0, 'bg-blue-500', ROLE_CONFIG.uploader], ['Leitores', stats.readers || 0, 'bg-gray-500', ROLE_CONFIG.reader]].map(([l, v, barColor, rc]) => (
+          <Card key={l} className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2"><rc.icon className={`w-4 h-4 ${rc.color}`} /><span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{l}</span></div>
+              <span className={`text-xl font-black ${rc.color}`}>{v}</span>
+            </div>
+            <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+              <div className={`h-full ${barColor} rounded-full transition-all`} style={{ width: `${stats.total ? (v / stats.total) * 100 : 0}%` }} />
+            </div>
+          </Card>
+        ))}
+      </div>
+      <Card className="p-4 bg-gray-50 dark:bg-gray-800/60">
+        <p className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Crescimento</p>
+        <div className="grid grid-cols-2 gap-4">
+          <div><p className="text-xs text-gray-500 dark:text-gray-400">Esta semana</p><p className="text-xl font-black text-primary-600 dark:text-primary-400">+{stats.newThisWeek || 0}</p></div>
+          <div><p className="text-xs text-gray-500 dark:text-gray-400">Hoje</p><p className="text-xl font-black text-primary-600 dark:text-primary-400">+{stats.newToday || 0}</p></div>
+        </div>
+      </Card>
+    </div>
+  </Modal>
+);
 
 export default UserManagement;

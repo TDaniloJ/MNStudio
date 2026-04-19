@@ -64,7 +64,11 @@ module.exports = (sequelize, DataTypes) => {
     bio: {
       type: DataTypes.TEXT,
       allowNull: true
-    }
+    },
+    subscription_plan: {
+      type: DataTypes.STRING(50),
+      allowNull: true
+    },
   }, {
     tableName: 'users',
     timestamps: true,
@@ -108,6 +112,10 @@ module.exports = (sequelize, DataTypes) => {
     User.belongsToMany(models.Badge, {
       through: models.UserBadge,
       as: 'badges'
+    });
+    User.hasMany(models.UserSubscription, {
+      foreignKey: 'user_id',
+      as: 'subscriptions'
     });
   };
 

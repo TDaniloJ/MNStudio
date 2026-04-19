@@ -7,6 +7,7 @@ require('dotenv').config();
 const { sequelize, testConnection } = require('./config/db');
 const errorHandler = require('./middlewares/errorHandler');
 const trackSession = require('./middlewares/sessionTracker');
+const db = require('./models');
 
 // 🔹 SOCKET
 const initSocket = require('./socket');
@@ -33,6 +34,7 @@ const userStatsRoutes = require('./routes/userStatsRoutes');
 const coinRoutes = require('./routes/coinRoutes');
 const helpCenterRoutes = require('./routes/helpCenterRoutes');
 const helpRequestRoutes = require('./routes/helpRequestRoutes');
+const subscriptionRoutes = require('./routes/subscriptionRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -88,6 +90,7 @@ app.use('/api/activities', activityRoutes);
 app.use('/api/badges', badgeRoutes);
 app.use('/api/users', userStatsRoutes);
 app.use('/api/coins', coinRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
 
 // 🔹 HELP CENTER & HELP REQUESTS
 app.use('/api/help-center', helpCenterRoutes);
@@ -108,8 +111,10 @@ const startServer = async () => {
   try {
     await testConnection();
 
+console.log('MODELS CARREGADOS:', Object.keys(db.sequelize.models));
+
     if (process.env.NODE_ENV === 'development') {
-      await sequelize.sync({ alter: true });
+      await db.sequelize.sync({ alter: true });
       console.log('✅ Modelos sincronizados');
     }
 

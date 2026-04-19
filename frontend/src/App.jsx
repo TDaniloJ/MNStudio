@@ -55,6 +55,7 @@ import NovelWorldbuildingManager from './pages/admin/NovelWorldbuildingManager';
 import Transactions from './pages/admin/Transactions';
 import SupportManagement from './pages/admin/Support';
 import Badge from './pages/admin/Badge';
+import Plans from './pages/admin/Plans';
 
 // Error Pages
 import ServerError from './pages/errors/ServerError';
@@ -216,6 +217,7 @@ const socketConnected = useRef(false);
               <Route path="transactions" element={<ProtectedRoute adminOnly><Transactions /></ProtectedRoute>}/>
               <Route path="support" element={<ProtectedRoute adminOnly><SupportManagement /></ProtectedRoute>}/>
               <Route path="badges" element={<ProtectedRoute adminOnly><Badge /></ProtectedRoute>}/>
+              <Route path="plans" element={<ProtectedRoute adminOnly><Plans /></ProtectedRoute>}/>
             </Route>
 
             {/* 404 Route */}
